@@ -1,0 +1,338 @@
+---
+description: Pipeline to process mist client_events logs
+processors:
+  - set:
+      tag: set_ecs_version
+      field: ecs.version
+      value: 8.11.0
+  - set:
+      tag: copy_original_message
+      field: originalMessage
+      copy_from: message
+  - rename:
+      ignore_missing: true
+      if: ctx.event?.original == null
+      tag: rename_message
+      field: originalMessage
+      target_field: event.original
+  - remove:
+      ignore_missing: true
+      if: ctx.event?.original != null
+      tag: remove_copied_message
+      field: originalMessage
+  - remove:
+      ignore_missing: true
+      tag: remove_message
+      field: message
+  - json:
+      tag: json_original
+      field: event.original
+      target_field: mist.client_events
+      if: ctx.event?.original != null &&
+          (ctx.event.original.trim().startsWith('{') ||
+           ctx.event.original.trim().startsWith('['))
+      ignore_failure: true
+##########################
+## ECS device  Mapping ##
+##########################
+  - rename:
+      ignore_missing: true
+      field: mist.client_events.client_family
+      target_field: device.model.identifier
+  - rename:
+      ignore_missing: true
+      field: mist.client_events.client_manufacture
+      target_field: device.manufacturer
+  - rename:
+      ignore_missing: true
+      field: mist.client_events.client_model
+      target_field: device.model.name
+  - rename:
+      ignore_missing: true
+      field: mist.client_events.client_os
+      target_field: device.os.version
+##########################
+# review to ensure the field names are correct
+##########################
+  - rename:
+      ignore_missing: true
+      field: mist.client_events.ssid
+      target_field: network.name
+  - rename:
+      ignore_missing: true
+      field: mist.client_events.next_ap
+      target_field: destination.mac
+  - rename:
+      ignore_missing: true
+      field: mist.client_events.ap
+      target_field: server.mac
+  - rename:
+      ignore_missing: true
+      field: mist.client_events.event_id
+      target_field: transaction.id
+  - rename:
+      ignore_missing: true
+      field: mist.client_events.service
+      target_field: service.name
+# review to ensure the field names are correct
+  - append:
+      field: event.category
+      value:
+        - network
+      allow_duplicates: false
+# Review after you understand all the events      
+#   - append:
+#       field: event.type
+#       value:
+#         - connection
+#       allow_duplicates: false
+#   - append:
+#       if: ctx.mist?.client_events?.disconnect != null
+#       field: event.type
+#       value:
+#         - end
+#       allow_duplicates: false
+#   - rename:
+#       ignore_missing: true
+#       field: mist.client_events.ev_type
+#       target_field: event.kind
+  - rename:
+      ignore_missing: true
+      field: mist.client_events.client_hostname
+      target_field: client.hostname
+  - rename:
+      ignore_missing: true
+      field: mist.client_events.hostname
+      target_field: client.hostname
+##########################
+## ECS event  Mapping ##
+##########################
+  - rename:
+      ignore_missing: true
+      field: mist.client_events.duration
+      target_field: event.duration
+  - script:
+      description: "Default event.dataset from topic"
+      if: ctx.topic != null
+      lang: painless
+      source: |
+        ctx.event.dataset = ctx.topic;
+  - script:
+      description: Convert event.duration from seconds to nanoseconds.
+      if: ctx.event?.duration != null
+      lang: painless
+      source: |
+        ctx.event.duration = ctx.event.duration * 1000000000;
+  - rename:
+      ignore_missing: true
+      field: mist.client_events.disconnect
+      target_field: event.end
+  - rename:
+      ignore_missing: true
+      field: mist.client_events.topic
+      target_field: event.action
+  - rename:
+      ignore_missing: true
+      field: mist.client_events.id
+      target_field: event.id
+  - rename:
+      ignore_missing: true
+      field: mist.client_events.count
+      target_field: event.sequence
+  - rename:
+      ignore_missing: true
+      field: mist.client_events.connect
+      target_field: event.start
+  - rename:
+      ignore_missing: true
+      field: mist.client_events.reason
+      target_field: event.reason
+  - rename:
+      ignore_missing: true
+      field: mist.client_events.component
+      target_field: event.provider
+  - script:
+      tag: script_convert_array_to_string
+      description: Ensures the date processor does not receive an array value.
+      lang: painless
+      source: |
+        if (ctx.mist?.client_events?.timestamp != null &&
+            ctx.mist.client_events.timestamp instanceof ArrayList){
+            ctx.mist.client_events.timestamp = ctx.mist.client_events.timestamp[0];
+        }
+  - date:
+      if: ctx.mist?.client_events?.get("@timestamp") != null
+      tag: date_processor_mist.client_events.@timestamp
+      field: mist.client_events.@timestamp
+      target_field: '@timestamp'
+      formats:
+        - UNIX_MS
+  - script:
+      description: "Convert event.start/end from epoch seconds to epoch milliseconds"
+      lang: painless
+      source: |
+        if (ctx.event?.start != null) {
+          ctx.event.start = ctx.event.start * 1000;
+        }
+        if (ctx.event?.end != null) {
+          ctx.event.end = ctx.event.end * 1000;
+        }
+##########################
+## ECS Observer Mapping ##
+##########################
+  - set:
+      field: observer.vendor
+      value: juniper
+  - rename:
+      field: mist.client_events.model
+      target_field: observer.product
+  - rename:
+      ignore_missing: true
+      field: mist.client_events.ap_name
+      target_field: observer.product
+  - rename:
+      ignore_missing: true
+      field: mist.client_events.ap
+      target_field: observer.mac
+# depending on the type of event, the ap_name or device_name will be used as the observer.name
+  - script:
+    description: Set observer.name from device_name or ap_name (device_name takes priority)
+    lang: painless
+    source: |
+      def dev = ctx?.mist?.client_events?.device_name;
+      def ap = ctx?.mist?.client_events?.ap_name;
+      if ((dev != null && !dev.isEmpty()) || (ap != null && !ap.isEmpty())) {
+        ctx.observer = ctx.observer != null ? ctx.observer : [:];
+        ctx.observer.name = dev != null && !dev.isEmpty() ? dev : ap;
+      }
+  - rename:
+      ignore_missing: true
+      field: mist.client_events.device_type
+      target_field: observer.type
+##########################
+## ECS client  Mapping ##
+##########################
+  - rename:
+      ignore_missing: true
+      field: mist.client_events.client_username
+      target_field: client.user.name
+  - rename:
+      ignore_missing: true
+      field: mist.client_events.client_username
+      target_field: client.user.name
+  - rename:
+      ignore_missing: true
+      field: mist.client_events.client_ip
+      target_field: client.ip
+  - rename:
+      ignore_missing: true
+      field: mist.client_events.ip
+      target_field: client.ip
+  - rename:
+      ignore_missing: true
+      field: mist.client_events.mac
+      target_field: client.mac
+
+##########################
+## ECS source  Mapping ##
+##########################
+  - rename:
+      ignore_missing: true
+      field: mist.client_events.src_ip
+      target_field: source.ip
+
+##########################
+## ECS organization  Mapping ##
+##########################
+  - rename:
+      ignore_missing: true
+      field: mist.client_events.site_name
+      target_field: organization.name
+  - rename:
+      ignore_missing: true
+      field: mist.client_events.org_id
+      target_field: organization.id
+  - script:
+      tag: script_drop_null_empty_values
+      description: Drops null/empty values recursively.
+      lang: painless
+      source: |
+        boolean dropEmptyFields(Object object) {
+          if (object == null || object == "") {
+            return true;
+          } else if (object instanceof Map) {
+            ((Map) object).values().removeIf(value -> dropEmptyFields(value));
+            return (((Map) object).size() == 0);
+          } else if (object instanceof List) {
+            ((List) object).removeIf(value -> dropEmptyFields(value));
+            return (((List) object).length == 0);
+          }
+          return false;
+        }
+        dropEmptyFields(ctx);
+
+  - geoip:
+      ignore_missing: true
+      tag: geoip_source_ip
+      field: source.ip
+      target_field: source.geo
+  - geoip:
+      ignore_missing: true
+      tag: geoip_source_asn
+      database_file: GeoLite2-ASN.mmdb
+      field: source.ip
+      target_field: source.as
+      properties:
+        - asn
+        - organization_name
+  - rename:
+      ignore_missing: true
+      tag: rename_source_as_asn
+      field: source.as.asn
+      target_field: source.as.number
+  - rename:
+      ignore_missing: true
+      tag: rename_source_as_organization_name
+      field: source.as.organization_name
+      target_field: source.as.organization.name
+  - geoip:
+      ignore_missing: true
+      tag: geoip_destination_ip
+      field: destination.ip
+      target_field: destination.geo
+  - geoip:
+      ignore_missing: true
+      tag: geoip_destination_asn
+      database_file: GeoLite2-ASN.mmdb
+      field: destination.ip
+      target_field: destination.as
+      properties:
+        - asn
+        - organization_name
+  - rename:
+      ignore_missing: true
+      tag: rename_destination_as_asn
+      field: destination.as.asn
+      target_field: destination.as.number
+  - rename:
+      ignore_missing: true
+      tag: rename_destination_as_organization_name
+      field: destination.as.organization_name
+      target_field: destination.as.organization.name
+#   - remove:
+#       ignore_failure: true
+#       ignore_missing: true
+#       if: ctx?.tags == null || !(ctx.tags.contains("preserve_original_event"))
+#       tag: remove_original_event
+#       field: event.original
+on_failure:
+  - append:
+      field: error.message
+      value: >-
+        Processor {{{_ingest.on_failure_processor_type}}} with tag
+        {{{_ingest.on_failure_processor_tag}}} in pipeline
+        {{{_ingest.on_failure_pipeline}}} failed with message:
+        {{{_ingest.on_failure_message}}}
+  - set:
+      field: event.kind
+      value: pipeline_error

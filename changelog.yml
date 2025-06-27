@@ -1,0 +1,38 @@
+# newer versions go on top
+- version: 1.0.0
+  changes:
+    - description: Initial Version
+      type: enhancement
+      link: https://github.com/elastic/integrations/pull/xxxx
+
+- version: 1.0.1
+  changes:
+    - description: Initial Version
+      type: enhancement
+      update: Updated the ingest pipeline to use observer.type instead of host.type
+    - description: Added new fields
+      type: enhancement
+      fields:
+        - name: client_events.rssi
+          type: long
+        - name: client_events.bssid
+          type: keyword
+        - name: client_events.wlan_id
+          type: keyword
+        - name: client_events.termination_reason
+          type: long
+        - name: client_events.disconnect_float
+          type: float
+        - name: client_events.version
+          type: long 
+        - name: client_events.band
+          type: keyword
+        - name: client_events.connect_float
+          type: float
+        - name: client_events.gateway
+          type: keyword
+    - description: Add new script for event.dataset
+      type: enhancement
+      script:
+        tag: script_add_event_dataset
+        description: Adds event.dataset field to the event.
