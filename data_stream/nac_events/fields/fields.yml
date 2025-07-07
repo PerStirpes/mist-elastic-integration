@@ -1,0 +1,91 @@
+- name: mist
+  type: group
+  fields:
+    - name: nac_events
+      type: group
+      fields:
+        # Mist NAC custom fields (not mapped to ECS) 
+        - name: auth_type          # e.g. "mab", "eap-tls"
+          type: keyword
+
+        - name: client_type        # "wired" or "wireless"
+          type: keyword
+
+        - name: nas_vendor         # NAS device vendor (e.g. "cisco")
+          type: keyword
+
+        - name: port_id            # Switch port identifier (if wired)
+          type: keyword
+
+        - name: ssid               # SSID name (if wireless)
+          type: keyword
+
+        - name: bssid              # BSSID (AP MAC address, if wireless)
+          type: keyword
+
+        - name: ap                 # Access Point MAC (if wireless)
+          type: keyword
+
+        - name: vlan               # VLAN ID assigned (as string)
+          type: keyword
+
+        - name: nacrule_matched    # Boolean, true if NAC policy rule was matched
+          type: boolean
+
+        - name: dryrun_nacrule_id  # NAC dry-run rule ID (if any)
+          type: keyword
+
+        - name: dryrun_nacrule_matched  # Boolean for dry-run rule match
+          type: boolean
+
+        - name: resp_attrs         # List of RADIUS response attributes
+          type: keyword
+
+        - name: idp_id             # Identity Provider config ID (if SSO used)
+          type: keyword
+
+        - name: idp_username       # Username sent to/returned from IDP (if differs from user.name)
+          type: keyword
+
+        - name: idp_role           # Roles or groups from IDP (raw string or CSV)
+          type: keyword
+
+        - name: random_mac         # Boolean, true if client used MAC randomization
+          type: boolean
+
+        - name: crc                # Checksum/identifier (could be an array of longs)
+          type: long
+
+        - name: site_id            # Mist site ID of the event
+          type: keyword
+
+        # Note: Fields like mist.nac_events.type, mac, device_mac, org_id, username, text, nas_ip, timestamp 
+        # are deliberately not listed here because they are mapped to ECS fields or removed by the pipeline.
+        # (E.g. type->event.action, mac->client.mac, device_mac->observer.mac, org_id->organization.id, 
+        # username->user.name, text->event.reason, nas_ip->observer.ip, timestamp->@timestamp)
+# - name: mist
+#   type: group
+#   fields:
+#     - name: nac_events
+#       type: group
+#       fields:
+#         - name: auth_type
+#           type: keyword
+#         - name: crc
+#           type: long
+#         - name: nas_vendor
+#           type: keyword
+#         - name: mxedge_id
+#           type: keyword
+#         - name: site_id
+#           type: keyword
+#         - name: port_id
+#           type: keyword
+#         - name: random_mac
+#           type: keyword
+#         - name: client_type
+#           type: keyword
+#         - name: resp_attrs
+#           type: keyword
+#         - name: timestamp
+#           type: long

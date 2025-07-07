@@ -196,15 +196,15 @@ processors:
       target_field: observer.mac
 # depending on the type of event, the ap_name or device_name will be used as the observer.name
   - script:
-    description: Set observer.name from device_name or ap_name (device_name takes priority)
-    lang: painless
-    source: |
-      def dev = ctx?.mist?.client_events?.device_name;
-      def ap = ctx?.mist?.client_events?.ap_name;
-      if ((dev != null && !dev.isEmpty()) || (ap != null && !ap.isEmpty())) {
-        ctx.observer = ctx.observer != null ? ctx.observer : [:];
-        ctx.observer.name = dev != null && !dev.isEmpty() ? dev : ap;
-      }
+      description: Set observer.name from device_name or ap_name (device_name takes priority)
+      lang: painless
+      source: |
+        def dev = ctx?.mist?.client_events?.device_name;
+        def ap = ctx?.mist?.client_events?.ap_name;
+        if ((dev != null && !dev.isEmpty()) || (ap != null && !ap.isEmpty())) {
+          ctx.observer = ctx.observer != null ? ctx.observer : [:];
+          ctx.observer.name = dev != null && !dev.isEmpty() ? dev : ap;
+        }
   - rename:
       ignore_missing: true
       field: mist.client_events.device_type
@@ -265,7 +265,7 @@ processors:
             return (((Map) object).size() == 0);
           } else if (object instanceof List) {
             ((List) object).removeIf(value -> dropEmptyFields(value));
-            return (((List) object).length == 0);
+            return (((List) object).size() == 0);
           }
           return false;
         }
