@@ -4,88 +4,54 @@
     - name: nac_events
       type: group
       fields:
-        # Mist NAC custom fields (not mapped to ECS) 
-        - name: auth_type          # e.g. "mab", "eap-tls"
+        # Mist NAC Events custom fields (not mapped to ECS)
+        - name: auth_type           # Authentication method (e.g. "mab", "eap-tls")
           type: keyword
-
-        - name: client_type        # "wired" or "wireless"
+        - name: client_type         # "wired" or "wireless"
           type: keyword
-
-        - name: nas_vendor         # NAS device vendor (e.g. "cisco")
+        - name: nas_vendor          # Network access server vendor (e.g. "cisco-ios", "juniper-mist")
           type: keyword
-
-        - name: port_id            # Switch port identifier (if wired)
+        - name: port_id             # Switch port identifier (if wired)
           type: keyword
-
-        - name: ssid               # SSID name (if wireless)
+        - name: ssid                # SSID name (if wireless client; optional in auth event)
           type: keyword
-
-        - name: bssid              # BSSID (AP MAC address, if wireless)
+        - name: bssid               # BSSID (AP radio MAC, if wireless)
           type: keyword
-
-        - name: ap                 # Access Point MAC (if wireless)
+        - name: ap                  # Access Point MAC address (if wireless)
           type: keyword
-
-        - name: vlan               # VLAN ID assigned (as string)
+        - name: vlan                # VLAN ID assigned to client (as string, if provided)
           type: keyword
-
-        - name: nacrule_matched    # Boolean, true if NAC policy rule was matched
+        - name: vlan_source         # Source of VLAN assignment (e.g. "nactag", "usermac"), if provided
+          type: keyword
+        - name: nacrule_matched     # Boolean indicating if a policy rule was matched
           type: boolean
-
-        - name: dryrun_nacrule_id  # NAC dry-run rule ID (if any)
+        - name: dryrun_nacrule_id   # ID of any NAC dry-run rule evaluated
           type: keyword
-
-        - name: dryrun_nacrule_matched  # Boolean for dry-run rule match
+        - name: dryrun_nacrule_matched  # Boolean indicating if dry-run rule was matched
           type: boolean
-
-        - name: resp_attrs         # List of RADIUS response attributes
+        - name: resp_attrs          # List of RADIUS response attributes (if any)
           type: keyword
-
-        - name: idp_id             # Identity Provider config ID (if SSO used)
+        - name: idp_id              # Identity Provider configuration ID (if SSO/IdP used)
           type: keyword
-
-        - name: idp_username       # Username sent to/returned from IDP (if differs from user.name)
+        - name: idp_username        # Username sent to or returned from IdP (if differs from user.name)
           type: keyword
-
-        - name: idp_role           # Roles or groups from IDP (raw string or CSV)
+        - name: idp_role            # Roles or groups from IdP (could be CSV or single string)
           type: keyword
-
-        - name: random_mac         # Boolean, true if client used MAC randomization
+        - name: random_mac          # True if client used MAC randomization (private MAC)
           type: boolean
-
-        - name: crc                # Checksum/identifier (could be an array of longs)
+        - name: crc                 # Checksum/identifier array (as long values)
           type: long
-
-        - name: site_id            # Mist site ID of the event
+        - name: mxedge_id           # Mist Edge device ID, if applicable
           type: keyword
-
-        # Note: Fields like mist.nac_events.type, mac, device_mac, org_id, username, text, nas_ip, timestamp 
-        # are deliberately not listed here because they are mapped to ECS fields or removed by the pipeline.
-        # (E.g. type->event.action, mac->client.mac, device_mac->observer.mac, org_id->organization.id, 
-        # username->user.name, text->event.reason, nas_ip->observer.ip, timestamp->@timestamp)
-# - name: mist
-#   type: group
-#   fields:
-#     - name: nac_events
-#       type: group
-#       fields:
-#         - name: auth_type
-#           type: keyword
-#         - name: crc
-#           type: long
-#         - name: nas_vendor
-#           type: keyword
-#         - name: mxedge_id
-#           type: keyword
-#         - name: site_id
-#           type: keyword
-#         - name: port_id
-#           type: keyword
-#         - name: random_mac
-#           type: keyword
-#         - name: client_type
-#           type: keyword
-#         - name: resp_attrs
-#           type: keyword
-#         - name: timestamp
-#           type: long
+        - name: site_id             # Mist site ID where the event occurred
+          type: keyword
+        - name: rx_pkts             # Packets received from client (during session)
+          type: long
+        - name: tx_pkts             # Packets transmitted to client (during session)
+          type: long
+        - name: rx_bytes            # Bytes received from client
+          type: long
+        - name: tx_bytes            # Bytes transmitted to client
+          type: long
+        - name: session_duration_in_mins  # Session length in minutes (integer)
+          type: integer

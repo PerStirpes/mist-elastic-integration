@@ -1,10 +1,25 @@
 # newer versions go on top
-- version: 1.0.0
+- version: 1.0.4
   changes:
-    - description: Initial Version
+    - description: Added support for alarms and audits
       type: enhancement
-      link: https://github.com/elastic/integrations/pull/xxxx
-
+      update: "additional ingestion pipeline added"
+    - description: Added new fields
+      
+- version: 1.0.3
+  changes:
+    - description: Refactored ingest pipeline by splitting it into multiple pipelines
+      type: enhancement
+      update: "includes process mist client: info, join, sessions device: events, updowns, | mx-edge event logs Nac events and Nac accounting events"
+    - description: Added new fields
+      
+- version: 1.0.2
+  changes:
+    - description: Updated Version
+      type: enhancement
+      update: includes Nac events and Nac accounting events
+    - description: Added new fields
+      
 - version: 1.0.1
   changes:
     - description: Initial Version
@@ -36,3 +51,10 @@
       script:
         tag: script_add_event_dataset
         description: Adds event.dataset field to the event.
+      
+- version: 1.0.0
+  changes:
+    - description: Initial Version
+      type: enhancement
+      link: https://github.com/elastic/integrations/pull/xxxx
+

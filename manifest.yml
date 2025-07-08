@@ -1,8 +1,8 @@
 format_version: 3.1.4
 name: mist
 title: Mist
-version: 1.0.1
-description: Process juniper_mist client_events logs
+version: 1.0.4
+description: Process juniper_mist logs
 type: integration
 categories:
   - security
@@ -13,11 +13,11 @@ conditions:
 policy_templates:
   - name: mist
     title: Mist
-    description: Process juniper_mist client_events logs
+    description: Process juniper_mist sys logs
     inputs:
       - type: http_endpoint
         title: 'Mist Events : http_endpoint'
-        description: Mist client events
+        description: Mist logs
 owner:
   github: '@elastic/custom-integrations'
   type: community

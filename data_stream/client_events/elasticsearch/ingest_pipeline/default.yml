@@ -1,5 +1,5 @@
 ---
-description: Pipeline to process mist client_events logs
+description: "Pipeline to process mist client: info, join, sessions | device: events, updowns, | mx-edge event logs"
 processors:
   - set:
       tag: set_ecs_version

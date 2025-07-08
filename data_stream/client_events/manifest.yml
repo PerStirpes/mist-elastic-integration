@@ -1,11 +1,11 @@
 title: |
-  Juniper Mist Wi-Fi events
+  Juniper Mist Network events
 type: logs
 streams:
   - input: http_endpoint
     template_path: http_endpoint.yml.hbs
     title: |
-      Juniper Mist Wi-Fi events
+      Juniper Mist Network events
     description: |
       Ingests syslog/webhook events from Juniper Mist access points
     vars:

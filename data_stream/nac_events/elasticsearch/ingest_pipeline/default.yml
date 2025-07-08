@@ -1,171 +1,126 @@
----
-description: "Pipeline to process Mist NAC webhook events (nac_events)"
+description: "Combined pipeline for Juniper Mist NAC Events and NAC Accounting"
 processors:
-  # 1. Set ECS version (for reference in indexed events)
+  # 1. Set ECS version
   - set:
       tag: set_ecs_version
       field: ecs.version
       value: "8.11.0"
 
-  # 2. Preserve the original message for debugging (if needed)
+  # 2. Preserve original message
   - set:
-      tag: copy_original_message
-      field: originalMessage
+      tag: preserve_original
+      field: event.original
       copy_from: message
 
-  # 3. Move original message to event.original (ECS field for raw log)
-  - rename:
-      tag: rename_message_to_original
-      field: originalMessage
-      target_field: event.original
-      ignore_missing: true
-      if: "ctx.event?.original == null"
-
-  # 4. Clean up the now-unused 'message' field (we use event.original instead)
+  # 3. Remove raw message field
   - remove:
-      tag: remove_message_field
       field: message
       ignore_missing: true
 
-  # 5. Parse JSON from event.original into mist.nac_events.* fields
+  # 4. Parse JSON into a generic namespace
   - json:
-      tag: json_parse_nac
+      tag: parse_mist_nac
       field: event.original
-      target_field: mist.nac_events
-      # If JSON parsing fails, the on_failure below will handle the error
+      target_field: mist.nac
 
-  ## 6. Field Mappings to ECS ##
-  # Convert NAS IP (string) to IP type and map to observer.ip
+  # 5. Route into nac_events vs nac_accounting
+  - script:
+      tag: route_to_event_or_accounting
+      lang: painless
+      source: |
+        if (ctx.mist?.nac?.type != null && ctx.mist.nac.type.startsWith("NAC_ACCOUNTING")) {
+          ctx.mist.nac_accounting = ctx.mist.remove("nac");
+        } else {
+          ctx.mist.nac_events = ctx.mist.remove("nac");
+        }
+
+  ######################################
+  # === NAC EVENTS PROCESSORS (if) === #
+  ######################################
+
+  # 6a. Only if this is an auth event
   - convert:
-      tag: convert_nas_ip_to_ip
+      if: "ctx.mist?.nac_events != null"
+      tag: nas_ip_to_observer_ip
       field: mist.nac_events.nas_ip
       target_field: observer.ip
       type: ip
       ignore_missing: true
       ignore_failure: true
+  - convert:
+      if: "ctx.mist?.nac_events?.random_mac != null"
+      tag: random_mac_to_bool_acc
+      field: mist.nac_accounting.random_mac
+      type: boolean          # <-- converts the string "false"/"true" to real booleans
+      ignore_missing: true   # don’t fail if the field is absent
+      ignore_failure: true   # don’t fail if the value can’t be parsed
 
-  # Map event type (action) to ECS event.action
   - rename:
-      tag: map_type_to_event_action
-      field: mist.nac_events.type
-      target_field: event.action
-      ignore_missing: true
-
-  # Map client MAC to ECS client.mac
-  - rename:
+      if: "ctx.mist?.nac_events != null"
       tag: map_client_mac
       field: mist.nac_events.mac
       target_field: client.mac
       ignore_missing: true
 
-  # Map network device MAC to ECS observer.mac (was destination.mac originally)
   - rename:
-      tag: map_device_mac_to_observer
+      if: "ctx.mist?.nac_events != null"
+      tag: map_device_mac_to_observer_mac
       field: mist.nac_events.device_mac
       target_field: observer.mac
       ignore_missing: true
 
-  # Map NAC policy rule ID to ECS rule.id
   - rename:
-      tag: map_nacrule_to_rule_id
-      field: mist.nac_events.nacrule_id
-      target_field: rule.id
+      if: "ctx.mist?.nac_events != null"
+      tag: map_nas_vendor_to_observer_vendor
+      field: mist.nac_events.nas_vendor
+      target_field: observer.vendor
       ignore_missing: true
 
-  # Map organization ID to ECS organization.id (for Mist org context)
   - rename:
+      if: "ctx.mist?.nac_events != null"
       tag: map_org_to_organization_id
       field: mist.nac_events.org_id
       target_field: organization.id
       ignore_missing: true
 
-  # Map text description to ECS event.reason
   - rename:
-      tag: map_text_to_event_reason
-      field: mist.nac_events.text
-      target_field: event.reason
-      ignore_missing: true
-
-  # Map username to ECS user.name
-  - rename:
+      if: "ctx.mist?.nac_events != null"
       tag: map_username_to_user_name
       field: mist.nac_events.username
       target_field: user.name
       ignore_missing: true
 
-  # Map NAS vendor to ECS observer.vendor
   - rename:
-      tag: map_nasvendor_to_observer_vendor
-      field: mist.nac_events.nas_vendor
-      target_field: observer.vendor
+      if: "ctx.mist?.nac_events != null"
+      tag: map_text_to_event_reason
+      field: mist.nac_events.text
+      target_field: event.reason
       ignore_missing: true
 
-  # Map IdP roles to ECS user.roles (if single string, it will become one-element array)
   - rename:
+      if: "ctx.mist?.nac_events != null"
+      tag: map_nacrule_to_rule_id
+      field: mist.nac_events.nacrule_id
+      target_field: rule.id
+      ignore_missing: true
+
+  - rename:
+      if: "ctx.mist?.nac_events != null"
       tag: map_idp_roles_to_user_roles
       field: mist.nac_events.idp_role
       target_field: user.roles
       ignore_missing: true
 
-  ## 7. Ensure timestamp is a single value (Mist sometimes sends it in an array) ##
-  - script:
-      tag: flatten_timestamp_array
-      lang: painless
-      source: |
-        if (ctx.mist?.nac_events?.timestamp != null) {
-          if (ctx.mist.nac_events.timestamp instanceof ArrayList && ctx.mist.nac_events.timestamp.size() > 0) {
-            // Take the first element if it's an array
-            ctx.mist.nac_events.timestamp = ctx.mist.nac_events.timestamp.get(0);
-          }
-        }
-
-  # 8. Convert Mist timestamp (epoch millis) to ECS @timestamp
-  - date:
-      tag: convert_timestamp
-      field: mist.nac_events.timestamp
-      target_field: "@timestamp"
-      formats: ["UNIX_MS"]   # epoch_millis format
-    #   ignore_missing: true
-
-#   ## 9. Drop any null/empty fields from the event (cleanup) ##
-#   - script:
-#       tag: drop_null_empty_fields
-#       lang: painless
-#       description: "Drops null or empty values from all fields (recursively)."
-#       source: |
-#         boolean removeEmpty(Object value) {
-#           if (value == null) return true;
-#           if (value instanceof String && value.length() == 0) return true;
-#           if (value instanceof Map) {
-#             Map mapVal = (Map) value;
-#             // Recurse into maps
-#             Iterator it = mapVal.entrySet().iterator();
-#             while (it.hasNext()) {
-#               Map.Entry entry = (Map.Entry) it.next();
-#               if (removeEmpty(entry.getValue())) {
-#                 it.remove();
-#               }
-#             }
-#             return mapVal.isEmpty();
-#           }
-#           if (value instanceof List) {
-#             List listVal = (List) value;
-#             listVal.removeIf(v -> removeEmpty(v));
-#             return listVal.isEmpty();
-#           }
-#           return false;
-#         }
-#         removeEmpty(ctx);
-
-  ## 10. GeoIP Enrichment (optional, based on IP fields present) ##
   - geoip:
-      tag: geoip_observer_ip
+      if: "ctx.mist?.nac_events != null"
+      tag: geoip_observer_ip_events
       field: observer.ip
       target_field: observer.geo
       ignore_missing: true
 
   - geoip:
-      tag: geoip_observer_asn
+      if: "ctx.mist?.nac_events != null"
+      tag: geoip_observer_asn_events
       field: observer.ip
       target_field: observer.as
       database_file: GeoLite2-ASN.mmdb
@@ -173,707 +128,263 @@ processors:
       ignore_missing: true
 
   - rename:
-      tag: normalize_observer_asn_fields
+      if: "ctx.mist?.nac_events != null"
       field: observer.as.asn
       target_field: observer.as.number
       ignore_missing: true
+
   - rename:
-      tag: normalize_observer_as_org
+      if: "ctx.mist?.nac_events != null"
       field: observer.as.organization_name
       target_field: observer.as.organization.name
       ignore_missing: true
 
-  # (GeoIP for destination/client IPs if they existed – typically not in NAC events)
-  - geoip:
-      tag: geoip_source_ip        # [Note: Mist NAC client IP is usually unknown at auth time; included for completeness]
-      field: source.ip
-      target_field: source.geo
-      ignore_missing: true
-  - geoip:
-      tag: geoip_source_asn
-      field: source.ip
-      target_field: source.as
-      database_file: GeoLite2-ASN.mmdb
-      properties: ["asn", "organization_name"]
-      ignore_missing: true
-  - rename:
-      tag: normalize_source_asn
-      field: source.as.asn
-      target_field: source.as.number
-      ignore_missing: true
-  - rename:
-      tag: normalize_source_as_org
-      field: source.as.organization_name
-      target_field: source.as.organization.name
-      ignore_missing: true
-
-  - geoip:
-      tag: geoip_destination_ip   # [Note: destination.ip likely not present for NAC events]
-      field: destination.ip
-      target_field: destination.geo
-      ignore_missing: true
-  - geoip:
-      tag: geoip_destination_asn
-      field: destination.ip
-      target_field: destination.as
-      database_file: GeoLite2-ASN.mmdb
-      properties: ["asn", "organization_name"]
-      ignore_missing: true
-  - rename:
-      tag: normalize_destination_asn
-      field: destination.as.asn
-      target_field: destination.as.number
-      ignore_missing: true
-  - rename:
-      tag: normalize_destination_as_org
-      field: destination.as.organization_name
-      target_field: destination.as.organization.name
-      ignore_missing: true
-
-  ## 11. Event Categorization (ECS category/type/outcome) ##
-  - append:
+  - set:
       tag: set_event_category_auth
       field: event.category
       value: ["authentication"]
-      allow_duplicates: false
 
   - append:
-      tag: set_event_category_network_on_access
+      if: "ctx.mist?.nac_events != null && (ctx.mist.nac_events?.type == 'NAC_CLIENT_PERMIT' || ctx.mist.nac_events?.type == 'NAC_CLIENT_DENY')"
+      tag: add_event_category_network_events
       field: event.category
-      value: ["network"]
-      if: "ctx.event?.action != null && (ctx.event.action == 'NAC_CLIENT_DENY' || ctx.event.action == 'NAC_CLIENT_PERMIT')"
+      value: "network"
       allow_duplicates: false
 
-  # Set event.type based on permit/deny action
   - set:
-      tag: set_event_type_denied
+      if: "ctx.mist.nac_events?.type == 'NAC_CLIENT_DENY'"
+      tag: set_event_type_denied_events
       field: event.type
       value: "denied"
-      if: "ctx.event?.action == 'NAC_CLIENT_DENY'"
 
   - set:
-      tag: set_event_type_allowed
+      if: "ctx.mist.nac_events?.type == 'NAC_CLIENT_PERMIT'"
+      tag: set_event_type_allowed_events
       field: event.type
       value: "allowed"
-      if: "ctx.event?.action == 'NAC_CLIENT_PERMIT'"
 
-  # Set event.outcome for success/failure
   - set:
-      tag: set_event_outcome_failure
+      if: "ctx.mist?.nac_events != null && (ctx.mist.nac_events?.type == 'NAC_CLIENT_DENY' || ctx.mist.nac_events?.type?.endsWith('FAILURE'))"
+      tag: set_event_outcome_failure_events
       field: event.outcome
       value: "failure"
-      if: "ctx.event?.action == 'NAC_CLIENT_DENY'"
 
   - set:
-      tag: set_event_outcome_success
+      if: "ctx.mist?.nac_events != null && (ctx.mist.nac_events?.type == 'NAC_CLIENT_PERMIT' || ctx.mist.nac_events?.type?.endsWith('SUCCESS'))"
+      tag: set_event_outcome_success_events
       field: event.outcome
       value: "success"
-      if: "ctx.event?.action == 'NAC_CLIENT_PERMIT'"
 
-  ## 12. Populate related.* fields with all relevant identifiers ##
   - append:
-      tag: related_ip_observer
+      if: "ctx.mist?.nac_events != null"
+      tag: related_observer_ip_events
       field: related.ip
       value: "{{{observer.ip}}}"
-      if: "ctx.observer?.ip != null"
       allow_duplicates: false
 
   - append:
-      tag: related_user_username
-      field: related.user
-      value: "{{{user.name}}}"
-      if: "ctx.user?.name != null"
-      allow_duplicates: false
-
-  - append:
-      tag: related_user_client_mac
+      if: "ctx.mist?.nac_events != null"
+      tag: related_client_mac_events
       field: related.user
       value: "{{{client.mac}}}"
-      if: "ctx.client?.mac != null"
       allow_duplicates: false
 
   - append:
-      tag: related_user_observer_mac
+      if: "ctx.mist?.nac_events != null"
+      tag: related_observer_mac_events
       field: related.user
       value: "{{{observer.mac}}}"
-      if: "ctx.observer?.mac != null"
       allow_duplicates: false
 
-  ## 13. Final Cleanup: remove fields that are duplicates or not needed in final event ##
+  - append:
+      if: "ctx.mist?.nac_events != null"
+      tag: related_username_events
+      field: related.user
+      value: "{{{user.name}}}"
+      allow_duplicates: false
+
   - remove:
-      tag: remove_nas_ip_field
+      if: "ctx.mist?.nac_events != null"
+      tag: drop_nas_ip_events
       field: mist.nac_events.nas_ip
       ignore_missing: true
 
-  - remove:
-      tag: remove_original_event_unless_preserved
-      field: event.original
-      if: "ctx.tags == null || !ctx.tags.contains('preserve_original_event')"
+  ###########################################
+  # === NAC ACCOUNTING PROCESSORS (if) === #
+  ###########################################
+
+  - convert:
+      if: "ctx.mist?.nac_accounting != null"
+      tag: nas_ip_to_observer_ip_acc
+      field: mist.nac_accounting.nas_ip
+      target_field: observer.ip
+      type: ip
       ignore_missing: true
       ignore_failure: true
 
+  - convert:
+      if: "ctx.mist?.nac_accounting != null"
+      tag: client_ip_to_client_ip_acc
+      field: mist.nac_accounting.client_ip
+      target_field: client.ip
+      type: ip
+      ignore_missing: true
+      ignore_failure: true
+
+  - rename:
+      if: "ctx.mist?.nac_accounting != null"
+      tag: map_type_to_event_action_acc
+      field: mist.nac_accounting.type
+      target_field: event.action
+      ignore_missing: true
+
+  - rename:
+      if: "ctx.mist?.nac_accounting != null"
+      tag: map_client_mac_acc
+      field: mist.nac_accounting.mac
+      target_field: client.mac
+      ignore_missing: true
+
+  - rename:
+      if: "ctx.mist?.nac_accounting != null"
+      tag: map_username_to_user_name_acc
+      field: mist.nac_accounting.username
+      target_field: user.name
+      ignore_missing: true
+
+  - rename:
+      if: "ctx.mist?.nac_accounting != null"
+      tag: map_nas_vendor_to_observer_vendor_acc
+      field: mist.nac_accounting.nas_vendor
+      target_field: observer.vendor
+      ignore_missing: true
+
+  - rename:
+      if: "ctx.mist?.nac_accounting != null"
+      tag: map_org_to_organization_id_acc
+      field: mist.nac_accounting.org_id
+      target_field: organization.id
+      ignore_missing: true
+
+  - rename:
+      if: "ctx.mist?.nac_accounting != null"
+      tag: map_device_mac_to_observer_mac_acc
+      field: mist.nac_accounting.device_mac
+      target_field: observer.mac
+      ignore_missing: true
+
+  - rename:
+      if: "ctx.mist?.nac_accounting != null"
+      tag: map_ap_to_observer_mac_acc
+      field: mist.nac_accounting.ap
+      target_field: observer.mac
+      ignore_missing: true
+
+  - geoip:
+      if: "ctx.mist?.nac_accounting != null"
+      tag: geoip_observer_ip_acc
+      field: observer.ip
+      target_field: observer.geo
+      ignore_missing: true
+
+  - geoip:
+      if: "ctx.mist?.nac_accounting != null"
+      tag: geoip_observer_asn_acc
+      field: observer.ip
+      target_field: observer.as
+      database_file: GeoLite2-ASN.mmdb
+      properties: ["asn", "organization_name"]
+      ignore_missing: true
+
+  - rename:
+      if: "ctx.mist?.nac_accounting != null"
+      field: observer.as.asn
+      target_field: observer.as.number
+      ignore_missing: true
+
+  - rename:
+      if: "ctx.mist?.nac_accounting != null"
+      field: observer.as.organization_name
+      target_field: observer.as.organization.name
+      ignore_missing: true
+
+  - set:
+      if: "ctx.mist?.nac_accounting != null"
+      tag: set_event_category_network_acc
+      field: event.category
+      value: ["network"]
+
+  - set:
+      if: "ctx.mist?.nac_accounting != null && (ctx.mist.nac_accounting?.type == 'NAC_ACCOUNTING_START')"
+      tag: set_event_type_start_acc
+      field: event.type
+      value: "start"
+
+  - set:
+      if: "ctx.mist?.nac_accounting != null && (ctx.mist.nac_accounting?.type == 'NAC_ACCOUNTING_STOP')"
+      tag: set_event_type_end_acc
+      field: event.type
+      value: "end"
+
+  - set:
+      if: "ctx.mist?.nac_accounting != null && (ctx.mist.nac_accounting?.type == 'NAC_ACCOUNTING_UPDATE')"
+      tag: set_event_type_info_acc
+      field: event.type
+      value: "info"
+
+  - set:
+      if: "ctx.mist?.nac_accounting != null"
+      tag: set_event_outcome_success_acc
+      field: event.outcome
+      value: "success"
+
+  - append:
+      if: "ctx.mist?.nac_accounting != null"
+      tag: related_observer_ip_acc
+      field: related.ip
+      value: "{{{observer.ip}}}"
+      allow_duplicates: false
+
+  - append:
+      if: "ctx.mist?.nac_accounting != null"
+      tag: related_client_ip_acc
+      field: related.ip
+      value: "{{{client.ip}}}"
+      allow_duplicates: false
+
+  - append:
+      if: "ctx.mist?.nac_accounting != null"
+      tag: related_client_mac_acc
+      field: related.user
+      value: "{{{client.mac}}}"
+      allow_duplicates: false
+
+  - append:
+      if: "ctx.mist?.nac_accounting != null"
+      tag: related_observer_mac_acc
+      field: related.user
+      value: "{{{observer.mac}}}"
+      allow_duplicates: false
+
+  - append:
+      if: "ctx.mist?.nac_accounting != null"
+      tag: related_username_acc
+      field: related.user
+      value: "{{{user.name}}}"
+      allow_duplicates: false
+
+  - remove:
+      if: "ctx.mist?.nac_accounting != null"
+      tag: drop_nas_ip_acc
+      field:
+        - mist.nac_accounting.nas_ip
+        - mist.nac_accounting.client_ip
+      ignore_missing: true
+
 on_failure:
-  # Handle any errors in the pipeline processing
   - append:
       field: error.message
-      value: >-
-        Processor {{{ _ingest.on_failure_processor_type }}} with tag
-        {{{ _ingest.on_failure_processor_tag }}} in pipeline
-        {{{ _ingest.on_failure_pipeline }}} failed with message:
-        {{{ _ingest.on_failure_message }}}
+      value: "Failed in pipeline '{{{ _ingest.on_failure_pipeline }}}', processor '{{{ _ingest.on_failure_processor_tag }}}': {{{ _ingest.on_failure_message }}}"
   - set:
       field: event.kind
       value: "pipeline_error"
-
-# ---
-# description: Pipeline to process mist_nac_events nac_events logs
-# processors:
-#   - set:
-#       tag: set_ecs_version
-#       field: ecs.version
-#       value: 8.11.0
-#   - set:
-#       tag: copy_original_message
-#       field: originalMessage
-#       copy_from: message
-#   - rename:
-#       ignore_missing: true
-#       if: ctx.event?.original == null
-#       tag: rename_message
-#       field: originalMessage
-#       target_field: event.original
-#   - remove:
-#       ignore_missing: true
-#       if: ctx.event?.original != null
-#       tag: remove_copied_message
-#       field: originalMessage
-#   - remove:
-#       ignore_missing: true
-#       tag: remove_message
-#       field: message
-#   - json:
-#       tag: json_original
-#       field: event.original
-#       target_field: mist.nac_events
-#   - convert:
-#       ignore_failure: true
-#       ignore_missing: true
-#       field: mist.nac_events.nas_ip
-#       target_field: source.ip
-#       type: ip
-#   - rename:
-#       ignore_missing: true
-#       field: mist.nac_events.type
-#       target_field: event.action
-#   - rename:
-#       ignore_missing: true
-#       field: mist.nac_events.mac
-#       target_field: client.mac
-#   - rename:
-#       ignore_missing: true
-#       field: mist.nac_events.nacrule_id
-#       target_field: rule.id
-#   - rename:
-#       ignore_missing: true
-#       field: mist.nac_events.device_mac
-#       target_field: destination.mac
-#   - rename:
-#       ignore_missing: true
-#       field: mist.nac_events.org_id
-#       target_field: organization.id
-#   - rename:
-#       ignore_missing: true
-#       field: mist.nac_events.text
-#       target_field: event.reason
-#   - rename:
-#       ignore_missing: true
-#       field: mist.nac_events.username
-#       target_field: user.name
-#   - script:
-#       tag: script_convert_array_to_string
-#       description: Ensures the date processor does not receive an array value.
-#       lang: painless
-#       source: |
-#         if (ctx.mist?.nac_events?.timestamp != null &&
-#             ctx.mist.nac_events.timestamp instanceof ArrayList){
-#             ctx.mist.nac_events.timestamp = ctx.mist.nac_events.timestamp[0];
-#         }
-#   - date:
-#       if: ctx.mist?.nac_events?.timestamp != null
-#       tag: date_processor_mist.nac_events.timestamp
-#       field: mist.nac_events.timestamp
-#       target_field: '@timestamp'
-#       formats:
-#         - epoch_millis
-#   - script:
-#       tag: script_drop_null_empty_values
-#       description: Drops null/empty values recursively.
-#       lang: painless
-#       source: |
-#         boolean dropEmptyFields(Object object) {
-#           if (object == null || object == "") {
-#             return true;
-#           } else if (object instanceof Map) {
-#             ((Map) object).values().removeIf(value -> dropEmptyFields(value));
-#             return (((Map) object).size() == 0);
-#           } else if (object instanceof List) {
-#             ((List) object).removeIf(value -> dropEmptyFields(value));
-#             return (((List) object).length == 0);
-#           }
-#           return false;
-#         }
-#         dropEmptyFields(ctx);
-#   - geoip:
-#       ignore_missing: true
-#       tag: geoip_source_ip
-#       field: source.ip
-#       target_field: source.geo
-#   - geoip:
-#       ignore_missing: true
-#       tag: geoip_source_asn
-#       database_file: GeoLite2-ASN.mmdb
-#       field: source.ip
-#       target_field: source.as
-#       properties:
-#         - asn
-#         - organization_name
-#   - rename:
-#       ignore_missing: true
-#       tag: rename_source_as_asn
-#       field: source.as.asn
-#       target_field: source.as.number
-#   - rename:
-#       ignore_missing: true
-#       tag: rename_source_as_organization_name
-#       field: source.as.organization_name
-#       target_field: source.as.organization.name
-#   - geoip:
-#       ignore_missing: true
-#       tag: geoip_destination_ip
-#       field: destination.ip
-#       target_field: destination.geo
-#   - geoip:
-#       ignore_missing: true
-#       tag: geoip_destination_asn
-#       database_file: GeoLite2-ASN.mmdb
-#       field: destination.ip
-#       target_field: destination.as
-#       properties:
-#         - asn
-#         - organization_name
-#   - rename:
-#       ignore_missing: true
-#       tag: rename_destination_as_asn
-#       field: destination.as.asn
-#       target_field: destination.as.number
-#   - rename:
-#       ignore_missing: true
-#       tag: rename_destination_as_organization_name
-#       field: destination.as.organization_name
-#       target_field: destination.as.organization.name
-#   - append:
-#       field: event.category
-#       value:
-#         - authentication
-#       allow_duplicates: false
-#   - append:
-#       field: event.type
-#       value:
-#         - denied
-#       allow_duplicates: false
-#   - append:
-#       if: ctx.event?.action == 'NAC_CLIENT_DENY'
-#       field: event.category
-#       value:
-#         - network
-#       allow_duplicates: false
-#   - append:
-#       if: ctx.event?.action == 'NAC_CLIENT_DENY'
-#       field: event.type
-#       value:
-#         - denied
-#       allow_duplicates: false
-#   - append:
-#       if: ctx.source?.ip != null
-#       field: related.ip
-#       value: '{{{source.ip}}}'
-#       allow_duplicates: false
-#   - append:
-#       if: ctx.user?.name != null
-#       field: related.user
-#       value: '{{{user.name}}}'
-#       allow_duplicates: false
-#   - append:
-#       if: ctx.destination?.mac != null
-#       field: related.user
-#       value: '{{{destination.mac}}}'
-#       allow_duplicates: false
-#   - append:
-#       if: ctx.client?.mac != null
-#       field: related.user
-#       value: '{{{client.mac}}}'
-#       allow_duplicates: false
-#   - remove:
-#       ignore_missing: true
-#       tag: remove_fields
-#       field:
-#         - mist.nac_events.nas_ip
-#   - remove:
-#       ignore_failure: true
-#       ignore_missing: true
-#       if: ctx?.tags == null || !(ctx.tags.contains("preserve_original_event"))
-#       tag: remove_original_event
-#       field: event.original
-# on_failure:
-#   - append:
-#       field: error.message
-#       value: >-
-#         Processor {{{_ingest.on_failure_processor_type}}} with tag
-#         {{{_ingest.on_failure_processor_tag}}} in pipeline
-#         {{{_ingest.on_failure_pipeline}}} failed with message:
-#         {{{_ingest.on_failure_message}}}
-#   - set:
-#       field: event.kind
-#       value: pipeline_error
-# ##############################
-# ##############################
-# ##############################
-# ##############################
-# ---   
-# description: Pipeline to process mist nac_events 
-# processors:
-#   - set:
-#       tag: set_ecs_version
-#       field: ecs.version
-#       value: 8.11.0
-#   - set:
-#       tag: copy_original_message
-#       field: originalMessage
-#       copy_from: message
-#   - rename:
-#       ignore_missing: true
-#       if: ctx.event?.original == null
-#       tag: rename_message
-#       field: originalMessage
-#       target_field: event.original
-#   - remove:
-#       ignore_missing: true
-#       if: ctx.event?.original != null
-#       tag: remove_copied_message
-#       field: originalMessage
-#   - remove:
-#       ignore_missing: true
-#       tag: remove_message
-#       field: message
-#   - json:
-#       tag: json_original
-#       field: event.original
-#       target_field: mist.nac_events
-#       if: ctx.event?.original != null &&
-#           (ctx.event.original.trim().startsWith('{') ||
-#            ctx.event.original.trim().startsWith('['))
-#       ignore_failure: true
-# ##########################
-# ## ECS device  Mapping ##
-# ##########################
-#   - rename:
-#       ignore_missing: true
-#       field: mist.client_events.client_family
-#       target_field: device.model.identifier
-#   - rename:
-#       ignore_missing: true
-#       field: mist.client_events.client_manufacture
-#       target_field: device.manufacturer
-#   - rename:
-#       ignore_missing: true
-#       field: mist.client_events.client_model
-#       target_field: device.model.name
-#   - rename:
-#       ignore_missing: true
-#       field: mist.client_events.client_os
-#       target_field: device.os.version
-# ##########################
-# # review to ensure the field names are correct
-# ##########################
-#   - rename:
-#       ignore_missing: true
-#       field: mist.client_events.ssid
-#       target_field: network.name
-#   - rename:
-#       ignore_missing: true
-#       field: mist.client_events.next_ap
-#       target_field: destination.mac
-#   - rename:
-#       ignore_missing: true
-#       field: mist.client_events.ap
-#       target_field: server.mac
-#   - rename:
-#       ignore_missing: true
-#       field: mist.client_events.event_id
-#       target_field: transaction.id
-#   - rename:
-#       ignore_missing: true
-#       field: mist.client_events.service
-#       target_field: service.name
-# # review to ensure the field names are correct
-#   - append:
-#       field: event.category
-#       value:
-#         - network
-#       allow_duplicates: false
-# # Review after you understand all the events      
-# #   - append:
-# #       field: event.type
-# #       value:
-# #         - connection
-# #       allow_duplicates: false
-# #   - append:
-# #       if: ctx.mist?.client_events?.disconnect != null
-# #       field: event.type
-# #       value:
-# #         - end
-# #       allow_duplicates: false
-# #   - rename:
-# #       ignore_missing: true
-# #       field: mist.client_events.ev_type
-# #       target_field: event.kind
-#   - rename:
-#       ignore_missing: true
-#       field: mist.client_events.client_hostname
-#       target_field: client.hostname
-#   - rename:
-#       ignore_missing: true
-#       field: mist.client_events.hostname
-#       target_field: client.hostname
-# ##########################
-# ## ECS event  Mapping ##
-# ##########################
-#   - rename:
-#       ignore_missing: true
-#       field: mist.client_events.duration
-#       target_field: event.duration
-#   - script:
-#       description: "Default event.dataset from topic"
-#       if: ctx.topic != null
-#       lang: painless
-#       source: |
-#         ctx.event.dataset = ctx.topic;
-#   - script:
-#       description: Convert event.duration from seconds to nanoseconds.
-#       if: ctx.event?.duration != null
-#       lang: painless
-#       source: |
-#         ctx.event.duration = ctx.event.duration * 1000000000;
-#   - rename:
-#       ignore_missing: true
-#       field: mist.client_events.disconnect
-#       target_field: event.end
-#   - rename:
-#       ignore_missing: true
-#       field: mist.client_events.topic
-#       target_field: event.action
-#   - rename:
-#       ignore_missing: true
-#       field: mist.client_events.id
-#       target_field: event.id
-#   - rename:
-#       ignore_missing: true
-#       field: mist.client_events.count
-#       target_field: event.sequence
-#   - rename:
-#       ignore_missing: true
-#       field: mist.client_events.connect
-#       target_field: event.start
-#   - rename:
-#       ignore_missing: true
-#       field: mist.client_events.reason
-#       target_field: event.reason
-#   - rename:
-#       ignore_missing: true
-#       field: mist.client_events.component
-#       target_field: event.provider
-#   - script:
-#       tag: script_convert_array_to_string
-#       description: Ensures the date processor does not receive an array value.
-#       lang: painless
-#       source: |
-#         if (ctx.mist?.client_events?.timestamp != null &&
-#             ctx.mist.client_events.timestamp instanceof ArrayList){
-#             ctx.mist.client_events.timestamp = ctx.mist.client_events.timestamp[0];
-#         }
-#   - date:
-#       if: ctx.mist?.client_events?.get("@timestamp") != null
-#       tag: date_processor_mist.client_events.@timestamp
-#       field: mist.client_events.@timestamp
-#       target_field: '@timestamp'
-#       formats:
-#         - UNIX_MS
-#   - script:
-#       description: "Convert event.start/end from epoch seconds to epoch milliseconds"
-#       lang: painless
-#       source: |
-#         if (ctx.event?.start != null) {
-#           ctx.event.start = ctx.event.start * 1000;
-#         }
-#         if (ctx.event?.end != null) {
-#           ctx.event.end = ctx.event.end * 1000;
-#         }
-# ##########################
-# ## ECS Observer Mapping ##
-# ##########################
-#   - set:
-#       field: observer.vendor
-#       value: juniper
-#   - rename:
-#       field: mist.client_events.model
-#       target_field: observer.product
-#   - rename:
-#       ignore_missing: true
-#       field: mist.client_events.ap_name
-#       target_field: observer.product
-#   - rename:
-#       ignore_missing: true
-#       field: mist.client_events.ap
-#       target_field: observer.mac
-# # depending on the type of event, the ap_name or device_name will be used as the observer.name
-#   - script:
-#     description: Set observer.name from device_name or ap_name (device_name takes priority)
-#     lang: painless
-#     source: |
-#       def dev = ctx?.mist?.client_events?.device_name;
-#       def ap = ctx?.mist?.client_events?.ap_name;
-#       if ((dev != null && !dev.isEmpty()) || (ap != null && !ap.isEmpty())) {
-#         ctx.observer = ctx.observer != null ? ctx.observer : [:];
-#         ctx.observer.name = dev != null && !dev.isEmpty() ? dev : ap;
-#       }
-#   - rename:
-#       ignore_missing: true
-#       field: mist.client_events.device_type
-#       target_field: observer.type
-# ##########################
-# ## ECS client  Mapping ##
-# ##########################
-#   - rename:
-#       ignore_missing: true
-#       field: mist.client_events.client_username
-#       target_field: client.user.name
-#   - rename:
-#       ignore_missing: true
-#       field: mist.client_events.client_username
-#       target_field: client.user.name
-  - rename:
-      ignore_missing: true
-      field: mist.client_events.client_ip
-      target_field: client.ip
-#   - rename:
-#       ignore_missing: true
-#       field: mist.client_events.ip
-#       target_field: client.ip
-#   - rename:
-#       ignore_missing: true
-#       field: mist.client_events.mac
-#       target_field: client.mac
-
-# ##########################
-# ## ECS source  Mapping ##
-# ##########################
-#   - rename:
-#       ignore_missing: true
-#       field: mist.client_events.src_ip
-#       target_field: source.ip
-
-# ##########################
-# ## ECS organization  Mapping ##
-# ##########################
-#   - rename:
-#       ignore_missing: true
-#       field: mist.client_events.site_name
-#       target_field: organization.name
-#   - rename:
-#       ignore_missing: true
-#       field: mist.client_events.org_id
-#       target_field: organization.id
-#   - script:
-#       tag: script_drop_null_empty_values
-#       description: Drops null/empty values recursively.
-#       lang: painless
-#       source: |
-#         boolean dropEmptyFields(Object object) {
-#           if (object == null || object == "") {
-#             return true;
-#           } else if (object instanceof Map) {
-#             ((Map) object).values().removeIf(value -> dropEmptyFields(value));
-#             return (((Map) object).size() == 0);
-#           } else if (object instanceof List) {
-#             ((List) object).removeIf(value -> dropEmptyFields(value));
-#             return (((List) object).length == 0);
-#           }
-#           return false;
-#         }
-#         dropEmptyFields(ctx);
-
-#   - geoip:
-#       ignore_missing: true
-#       tag: geoip_source_ip
-#       field: source.ip
-#       target_field: source.geo
-#   - geoip:
-#       ignore_missing: true
-#       tag: geoip_source_asn
-#       database_file: GeoLite2-ASN.mmdb
-#       field: source.ip
-#       target_field: source.as
-#       properties:
-#         - asn
-#         - organization_name
-#   - rename:
-#       ignore_missing: true
-#       tag: rename_source_as_asn
-#       field: source.as.asn
-#       target_field: source.as.number
-#   - rename:
-#       ignore_missing: true
-#       tag: rename_source_as_organization_name
-#       field: source.as.organization_name
-#       target_field: source.as.organization.name
-#   - geoip:
-#       ignore_missing: true
-#       tag: geoip_destination_ip
-#       field: destination.ip
-#       target_field: destination.geo
-#   - geoip:
-#       ignore_missing: true
-#       tag: geoip_destination_asn
-#       database_file: GeoLite2-ASN.mmdb
-#       field: destination.ip
-#       target_field: destination.as
-#       properties:
-#         - asn
-#         - organization_name
-#   - rename:
-#       ignore_missing: true
-#       tag: rename_destination_as_asn
-#       field: destination.as.asn
-#       target_field: destination.as.number
-#   - rename:
-#       ignore_missing: true
-#       tag: rename_destination_as_organization_name
-#       field: destination.as.organization_name
-#       target_field: destination.as.organization.name
-# #   - remove:
-# #       ignore_failure: true
-# #       ignore_missing: true
-# #       if: ctx?.tags == null || !(ctx.tags.contains("preserve_original_event"))
-# #       tag: remove_original_event
-# #       field: event.original
-# on_failure:
-#   - append:
-#       field: error.message
-#       value: >-
-#         Processor {{{_ingest.on_failure_processor_type}}} with tag
-#         {{{_ingest.on_failure_processor_tag}}} in pipeline
-#         {{{_ingest.on_failure_pipeline}}} failed with message:
-#         {{{_ingest.on_failure_message}}}
-#   - set:
-#       field: event.kind
-#       value: pipeline_error
