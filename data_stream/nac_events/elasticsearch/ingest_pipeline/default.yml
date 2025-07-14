@@ -4,7 +4,7 @@ processors:
   - set:
       tag: set_ecs_version
       field: ecs.version
-      value: "8.11.0"
+      value: 8.11.0
 
   # 2. Preserve original message
   - set:
@@ -89,7 +89,7 @@ processors:
       field: mist.nac_events.username
       target_field: user.name
       ignore_missing: true
-
+# TODO change this 
   - rename:
       if: "ctx.mist?.nac_events != null"
       tag: map_text_to_event_reason
@@ -233,9 +233,9 @@ processors:
 
   - rename:
       if: "ctx.mist?.nac_accounting != null"
-      tag: map_type_to_event_action_acc
+      tag: map_type_to_event_code
       field: mist.nac_accounting.type
-      target_field: event.action
+      target_field: event.code
       ignore_missing: true
 
   - rename:

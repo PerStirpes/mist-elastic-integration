@@ -1,0 +1,53 @@
+- name: mist
+  type: group
+  fields:
+    - name: alarm_events
+      type: group
+      fields:
+        # Vendor-specific alarm fields (raw data from Mist webhook)
+        - name: severity
+          type: keyword          # e.g. "critical", "warning", "informational" [oai_citation:2‡juniper.net](https://www.juniper.net/documentation/us/en/software/mist/mist-aiops/topics/concept/alerts-overview.html#:~:text=Table%201%3A%20Severity%20Levels%20Severity,Blue%20No%20action%20is%20required)
+        - name: group
+          type: keyword          # e.g. "infrastructure", "security", "marvis"
+        - name: type
+          type: keyword          # e.g. "infra_dhcp_failure", "rogue_ap", etc.
+        - name: id
+          type: keyword          # UUID of the alarm event
+        - name: org_id
+          type: keyword          # Mist organization ID (UUID)
+        - name: site_id
+          type: keyword          # Mist site ID (UUID)
+        - name: site_name
+          type: keyword          # Name of the site (location)
+        - name: aps
+          type: keyword          # List of AP MAC addresses (strings)
+        - name: macs
+          type: keyword          # List of client MAC addresses (strings)
+        - name: bssids
+          type: keyword          # (Optional) List of BSSIDs (strings) if applicable
+        - name: hostnames
+          type: keyword          # List of device hostnames
+        - name: ssids
+          type: keyword          # List of SSIDs
+        - name: wlan_ids
+          type: keyword          # List of WLAN IDs (UUIDs)
+        - name: vlans
+          type: long             # List of VLAN IDs (as numbers)
+        - name: servers
+          type: keyword          # List of server IPs (as strings)
+        - name: count
+          type: long             # Count of events in this alert interval
+        - name: incident_count
+          type: long             # Cumulative incident count
+        - name: client_count
+          type: long             # Number of impacted clients
+        - name: last_seen
+          type: keyword          # Timestamp of last occurrence (ISO8601 string or epoch)
+        - name: start
+          type: long             # Timestamp (epoch ms) when the issue started
+        - name: when
+          type: long             # Timestamp (epoch ms) – often same as start (first detection)
+        - name: timestamp
+          type: double           # Timestamp when event was reported (epoch s with fraction)
+        - name: update
+          type: boolean          # Indicates if this is an update to an existing open alert

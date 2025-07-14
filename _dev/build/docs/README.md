@@ -7,11 +7,9 @@ Check the [overview guidelines](https://www.elastic.co/guide/en/integrations-dev
 
 ## Datastreams
 
-
 ### Mist Events
 
 Mist client events
-
 
 ## Requirements
 
@@ -47,6 +45,7 @@ Check the [setup guidelines](https://www.elastic.co/guide/en/integrations-develo
 ### Enabling the integration in Elastic:
 
 #### Create a new integration from a ZIP file (optional)
+
 1. In Kibana, go to **Management** > **Integrations**.
 2. Select **Create new integration**.
 3. Select **Upload it as a .zip**.
@@ -54,6 +53,7 @@ Check the [setup guidelines](https://www.elastic.co/guide/en/integrations-develo
 5. Select **Add to Elastic**.
 
 ### Install the integration
+
 1. In Kibana, go to **Management** > **Integrations**.
 2. In **Search for integrations** search bar, type mist.
 3. Click the **mist** integration from the search results.
@@ -61,15 +61,12 @@ Check the [setup guidelines](https://www.elastic.co/guide/en/integrations-develo
 5. Add all the required integration configuration parameters.
 6. Click **Save and continue** to save the integration.
 
-
 ### Collecting logs from HTTP endpoint
 
 Specify the address and port that will be used to initialize a listening HTTP server that collects incoming HTTP POST requests containing a JSON body. The body must be either an object or an array of objects. Any other data types will result in an HTTP 400 (Bad Request) response. For arrays, one document is created for each object in the array.
 
-
-
-
 ### TLS/SSL Configuration (Optional)
+
 To enhance security, configure the server with TLS/SSL settings. This ensures secure communication between clients and the server. Below is an example of how to configure these settings:
 
 ```yml
@@ -82,18 +79,16 @@ ssl.certificate: The server's certificate, used to verify its identity. It conta
 
 In the input settings, include any relevant SSL Configuration and Secret Header values depending on the specific requirements of your endpoint. You may also configure additional options such as certificate, keys, supported_protocols, and verification_mode. Refer to the [Elastic SSL Documentation](https://www.elastic.co/guide/en/beats/filebeat/current/configuration-ssl.html#ssl-server-config) for further details.
 
-
-
 ## Troubleshooting (optional)
 
-- If some fields appear conflicted under the ``logs-*`` or ``metrics-*`` data views, this issue can be resolved by [reindexing](https://www.elastic.co/guide/en/elasticsearch/reference/current/use-a-data-stream.html#reindex-with-a-data-stream) the impacted data stream.
+-   If some fields appear conflicted under the `logs-*` or `metrics-*` data views, this issue can be resolved by [reindexing](https://www.elastic.co/guide/en/elasticsearch/reference/current/use-a-data-stream.html#reindex-with-a-data-stream) the impacted data stream.
 
 Provide information about special cases and exceptions that aren’t necessary for getting started or won’t be applicable to all users. Check the [troubleshooting guidelines](https://www.elastic.co/guide/en/integrations-developer/current/documentation-guidelines.html#idg-docs-guidelines-troubleshooting) for more information.
-
 
 ### Troubleshooting HTTP endpoint
 
 If you encounter an error while ingesting data, it might be due to the data collected over a long time span. Generating a response in such cases may take longer and might cause a request timeout if the `HTTP Client Timeout` parameter is set to a small duration. To avoid this error, it is recommended to adjust the `HTTP Client Timeout` and `Interval` parameters based on the duration of data collection.
+
 ```
 {
   "error": {
@@ -101,8 +96,6 @@ If you encounter an error while ingesting data, it might be due to the data coll
   }
 }
 ```
-
-
 
 ## Reference
 
@@ -113,6 +106,5 @@ Provide detailed information about the log or metric types we support within the
 ### Mist Events
 
 Mist client events
-
 
 {{fields "client_events"}}

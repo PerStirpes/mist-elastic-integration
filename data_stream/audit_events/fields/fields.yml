@@ -1,0 +1,30 @@
+- name: mist
+  type: group
+  description: >
+    **Juniper Mist** vendor-specific fields. This is the root for Mist-specific data.
+  fields:
+    - name: audit_events
+      type: group
+      description: >
+        Fields from Juniper Mist **audit** log events (configuration change logs).
+      fields:
+        - name: admin_name
+          type: keyword
+          description: >
+            The Mist administrator’s name and email (as provided in the log). 
+        - name: message
+          type: text
+          description: >
+            Descriptive audit log message of the action performed, including the object affected. 
+        - name: device_id
+          type: keyword
+          description: >
+            Identifier of the device (AP, switch, etc.) involved in the change (if applicable).
+        - name: wlan_id
+          type: keyword
+          description: >
+            Identifier of the WLAN/SSID involved in the event (if applicable).
+        - name: site_id
+          type: keyword
+          description: >
+            Identifier of the site associated with the event (if applicable).

@@ -111,12 +111,13 @@ processors:
       ignore_missing: true
       field: mist.client_events.duration
       target_field: event.duration
-  - script:
-      description: "Default event.dataset from topic"
-      if: ctx.topic != null
-      lang: painless
-      source: |
-        ctx.event.dataset = ctx.topic;
+#Map topic to default namespace
+#   - script:
+#       description: "Default event.dataset from topic"
+#       if: ctx.topic != null
+#       lang: painless
+#       source: |
+#         ctx.event.dataset = ctx.topic;
   - script:
       description: Convert event.duration from seconds to nanoseconds.
       if: ctx.event?.duration != null
@@ -127,10 +128,11 @@ processors:
       ignore_missing: true
       field: mist.client_events.disconnect
       target_field: event.end
-  - rename:
-      ignore_missing: true
-      field: mist.client_events.topic
-      target_field: event.action
+#Map event topic to default namespace
+#   - rename:
+#       ignore_missing: true
+#       field: mist.client_events.topic
+#       target_field: event.action
   - rename:
       ignore_missing: true
       field: mist.client_events.id
@@ -220,14 +222,32 @@ processors:
       ignore_missing: true
       field: mist.client_events.client_username
       target_field: client.user.name
-  - rename:
-      ignore_missing: true
+
+  - convert:
+      if: "ctx.mist?.client_events != null"
+      tag: client_ip_to_client_ip_acc
       field: mist.client_events.client_ip
       target_field: client.ip
-  - rename:
+      type: ip
       ignore_missing: true
+      ignore_failure: true
+  - convert:
+      if: "ctx.mist?.client_events != null"
+      tag: client_ip_to_client_ip_acc
       field: mist.client_events.ip
       target_field: client.ip
+      type: ip
+      ignore_missing: true
+      ignore_failure: true    
+# change to map to IP address above
+#   - rename:
+#       ignore_missing: true
+#       field: mist.client_events.client_ip
+#       target_field: client.ip
+#   - rename:
+#       ignore_missing: true
+#       field: mist.client_events.ip
+#       target_field: client.ip
   - rename:
       ignore_missing: true
       field: mist.client_events.mac

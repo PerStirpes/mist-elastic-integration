@@ -1,0 +1,308 @@
+---
+description: Pipeline to process mist alarms logs
+processors:
+  - set:
+      tag: set_ecs_version
+      field: ecs.version
+      value: 8.11.0
+  - set:
+      tag: copy_original_message
+      field: originalMessage
+      copy_from: message
+  - rename:
+      ignore_missing: true
+      if: ctx.event?.original == null
+      tag: rename_message
+      field: originalMessage
+      target_field: event.original
+  - remove:
+      ignore_missing: true
+      if: ctx.event?.original != null
+      tag: remove_copied_message
+      field: originalMessage
+  - remove:
+      ignore_missing: true
+      tag: remove_message
+      field: message
+  - json:
+      tag: json_original
+      field: event.original
+      target_field: mist.alarm_events
+# Juniper Mist can batch multiple alarms into one webhook if they happen within a short window. or—even inside a single event—certain fields (depending on the alarm definition) may appear as arrays of values. 
+#   # 3. Handle fields that might be arrays (take the first element if so) before date parsing
+  # - script:
+  #     tag: ensure_last_seen_scalar
+  #     lang: painless
+  #     source: |
+  #       if (ctx.mist?.alarm_events?.last_seen != null && ctx.mist.alarm_events.last_seen instanceof ArrayList) {
+  #         ctx.mist.alarm_events.last_seen = ctx.mist.alarm_events.last_seen[0];
+  #       }
+
+  # - script:
+  #     tag: ensure_start_scalar
+  #     lang: painless
+  #     source: |
+  #       if (ctx.mist?.alarm_events?.start != null && ctx.mist.alarm_events.start instanceof ArrayList) {
+  #         ctx.mist.alarm_events.start = ctx.mist.alarm_events.start[0];
+  #       }
+  - script:
+      tag: ensure_last_seen_scalar
+      lang: painless
+      source: >
+        if (ctx.mist != null && ctx.mist.alarm_events != null &&
+            ctx.mist.alarm_events.last_seen instanceof List) {
+          ctx.mist.alarm_events.last_seen = ctx.mist.alarm_events.last_seen.get(0);
+        }
+  - script:
+      tag: ensure_start_scalar
+      lang: painless
+      source: >
+        if (ctx.mist != null && ctx.mist.alarm_events != null &&
+            ctx.mist.alarm_events.start instanceof List) {
+          ctx.mist.alarm_events.start = ctx.mist.alarm_events.start.get(0);
+        }
+
+  
+# 4. Parse timestamps: last_seen -> @timestamp, start -> event.start (with proper formats)
+  - date:
+      if: ctx.mist?.alarm_events?.last_seen != null
+      tag: parse_last_seen_as_event_end
+      field: mist.alarm_events.last_seen
+      target_field: event.end
+      formats:
+        - yyyy-MM-dd'T'HH:mm:ss   # ISO8601 without timezone
+        - ISO8601                 # general ISO8601 (in case timezone is present)
+  - script:
+      tag: script_convert_array_to_string
+      description: Ensures the date processor does not receive an array value.
+      lang: painless
+      source: |
+        if (ctx.mist?.alarm_events?.start != null &&
+            ctx.mist.alarm_events.start instanceof ArrayList){
+            ctx.mist.alarm_events.start = ctx.mist.alarm_events.start[0];
+        }
+  - date:
+      if: ctx.mist?.alarm_events?.start != null
+      field: mist.alarm_events.start
+      target_field: event.start
+      formats:
+        - UNIX_MS                    # epoch milliseconds
+      tag: parse_start_time
+##########################
+## ECS  Mapping ##
+##########################
+  - rename:
+      field: mist.alarm_events.id
+      target_field: event.id
+      ignore_missing: true
+      tag: map_event_id  
+  - rename:
+      field: mist.alarm_events.type
+      target_field: event.code
+      ignore_missing: true
+      tag: map_event_code 
+  - rename:
+      ignore_missing: true
+      field: mist.alarm_events.org_id
+      target_field: organization.id
+  - rename:
+      ignore_missing: true
+      field: mist.alarm_events.hostnames
+      target_field: host.hostname
+  - rename:
+      ignore_missing: true
+      field: mist.alarm_events.macs
+      target_field: client.mac
+  - convert:
+      ignore_failure: true
+      ignore_missing: true
+      field: mist.alarm_events.servers
+      target_field: server.ip
+      type: ip
+  - rename:
+      ignore_missing: true
+      field: mist.alarm_events.site_name
+      target_field: organization.name
+  # 6. Set ECS categorization fields dynamically based on Mist alarm group & severity
+  - set:
+      field: event.kind
+      value: alert
+      tag: set_event_kind 
+  # - script:
+  #     tag: categorize_alert
+  #     lang: painless
+  #     source: >
+  #       if (ctx.mist != null && ctx.mist.alarm_events != null) {
+  #         def group = ctx.mist.alarm_events.group != null 
+  #                     ? ctx.mist.alarm_events.group.toLowerCase() : null;
+  #         def sev   = ctx.mist.alarm_events.severity != null 
+  #                     ? ctx.mist.alarm_events.severity.toLowerCase() : null;
+  #         if (group != null) {
+  #           if (group == "security") {
+  #             ctx.event.category = ["security"];
+  #             ctx.event.type     = ["indicator"];
+  #           } else if (group == "infrastructure" 
+  #                      || group == "infrastructue" 
+  #                      || group == "marvis") {
+  #             ctx.event.category = ["network"];
+  #             ctx.event.type     = sev == "critical" ? ["error"] : ["info"];
+  #           }
+  #         }
+  #         if (sev != null) {
+  #           if (sev == "critical") {
+  #             ctx.event.severity = 1L;
+  #           } else if (["warning","major","minor"].contains(sev)) {
+  #             ctx.event.severity = 2L;
+  #           } else if (["informational","info"].contains(sev)) {
+  #             ctx.event.severity = 3L;
+  #           }
+  #         }
+  #       }    
+  - script:
+      tag: categorize_alert
+      lang: painless
+      source: |
+        if (ctx.mist?.alarm_events != null) {
+          String group = ctx.mist.alarm_events.group != null ? ctx.mist.alarm_events.group.toLowerCase() : null;
+          String sev   = ctx.mist.alarm_events.severity != null ? ctx.mist.alarm_events.severity.toLowerCase() : null;
+          if (group != null) {
+            if (group == "security") {
+              // Security alarms -> security category, indicator type (security detection)
+              ctx.event.category = ["security"];
+              ctx.event.type = ["indicator"];
+            } else if (group == "infrastructure" || group == "infrastructue") {
+              // Infrastructure alarms -> network category
+              ctx.event.category = ["network"];
+              // Use severity to determine type (critical issues as error, others as info)
+              if (sev == "critical") {
+                ctx.event.type = ["error"];
+              } else {
+                ctx.event.type = ["info"];
+              }
+            } else if (group == "marvis") {
+              // Marvis (assurance) alarms -> also treat as network-related
+              ctx.event.category = ["network"];
+              if (sev == "critical") {
+                ctx.event.type = ["error"];
+              } else {
+                ctx.event.type = ["info"];
+              }
+            }
+          }
+          // Map severity string to numeric event.severity (ECS) if provided
+          if (sev != null) {
+            if (sev == "critical") {
+              ctx.event.severity = 1L;
+            } else if (sev == "warning" || sev == "major" || sev == "minor") {
+              ctx.event.severity = 2L;
+            } else if (sev == "informational" || sev == "info") {
+              ctx.event.severity = 3L;
+            }
+          }
+        }
+      
+  - script:
+      tag: script_drop_null_empty_values
+      description: Drops null/empty values recursively.
+      lang: painless
+      source: |
+        boolean dropEmptyFields(Object object) {
+          if (object == null || object == "") {
+            return true;
+          } else if (object instanceof Map) {
+            ((Map) object).values().removeIf(value -> dropEmptyFields(value));
+            return (((Map) object).size() == 0);
+          } else if (object instanceof List) {
+            ((List) object).removeIf(value -> dropEmptyFields(value));
+            return (((List) object).length == 0);
+          }
+          return false;
+        }
+        dropEmptyFields(ctx);
+  - remove:
+      ignore_failure: true
+      ignore_missing: true
+      if: ctx?.tags == null || !(ctx.tags.contains("preserve_original_event"))
+      tag: remove_original_event
+      field: event.original
+on_failure:
+  - append:
+      field: error.message
+      value: >-
+        Processor {{{_ingest.on_failure_processor_type}}} with tag
+        {{{_ingest.on_failure_processor_tag}}} in pipeline
+        {{{_ingest.on_failure_pipeline}}} failed with message:
+        {{{_ingest.on_failure_message}}}
+  - set:
+      field: event.kind
+      value: pipeline_error
+
+
+
+#  because Juniper Mist alarm events only reference private-scope IPs, GeoIP enrichment would never return useful data—so it’s both safe and efficient to disable those geoip processors in your pipeline.
+#   - geoip:
+#       ignore_missing: true
+#       tag: geoip_source_ip
+#       field: source.ip
+#       target_field: source.geo
+#   - geoip:
+#       ignore_missing: true
+#       tag: geoip_source_asn
+#       database_file: GeoLite2-ASN.mmdb
+#       field: source.ip
+#       target_field: source.as
+#       properties:
+#         - asn
+#         - organization_name
+#   - rename:
+#       ignore_missing: true
+#       tag: rename_source_as_asn
+#       field: source.as.asn
+#       target_field: source.as.number
+#   - rename:
+#       ignore_missing: true
+#       tag: rename_source_as_organization_name
+#       field: source.as.organization_name
+#       target_field: source.as.organization.name
+#   - geoip:
+#       ignore_missing: true
+#       tag: geoip_destination_ip
+#       field: destination.ip
+#       target_field: destination.geo
+#   - geoip:
+#       ignore_missing: true
+#       tag: geoip_destination_asn
+#       database_file: GeoLite2-ASN.mmdb
+#       field: destination.ip
+#       target_field: destination.as
+#       properties:
+#         - asn
+#         - organization_name
+#   - rename:
+#       ignore_missing: true
+#       tag: rename_destination_as_asn
+#       field: destination.as.asn
+#       target_field: destination.as.number
+#   - rename:
+#       ignore_missing: true
+#       tag: rename_destination_as_organization_name
+#       field: destination.as.organization_name
+#       target_field: destination.as.organization.name
+#   - append:
+#       if: ctx.event?.action == 'infra_dhcp_failure'
+#       field: event.category
+#       value:
+#         - network
+#       allow_duplicates: false
+#   - append:
+#       if: ctx.event?.action == 'infra_dhcp_failure'
+#       field: event.type
+#       value:
+#         - info
+#       allow_duplicates: false
+#   - remove:
+#       ignore_missing: true
+#       tag: remove_fields
+#       field:
+#         - mist.alarm_events.severity
+#         - mist.alarm_events.servers
