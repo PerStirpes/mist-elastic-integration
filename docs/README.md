@@ -222,7 +222,7 @@ Please refer to the following [document](https://www.elastic.co/guide/en/ecs/cur
 ## Mist NAC Authentication Events (`nac_events`)
 
 | Mist field (JSON) | ECS field created by pipeline                                                                             | Notes                                                   |
-| ----------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | 
+| ----------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
 | `nas_ip`          | `observer.ip` (typed)                                                                                     | Geo-enriched → `observer.geo`, `observer.as.*`          |
 | `mac`             | `client.mac`                                                                                              |                                                         |
 | `device_mac`      | `observer.mac`                                                                                            |                                                         |
@@ -286,3 +286,37 @@ Please refer to the following [document](https://www.elastic.co/guide/en/ecs/cur
 | log.file.vol          | The serial number of the volume that contains a file. (Windows-only)                      | keyword          |
 | log.flags             | Flags for the log file.                                                                   | keyword          |
 | log.offset            | Offset of the entry in the log file.                                                      | long             |
+
+# TODO
+
+## device events ingest pipeline
+
+`device-events`
+[ ] device events | has `text` `\"text\":\"DOT1XD_USR_SESSION_HELD: MAC-RADIUS User 0013954a9c24 session with MacAddress 00:13:95:4a:9c:24interface mge-0/0/38.0 vlan (null) is held\"`
+
+[ ] device events | has `type` `"type\":\"SW_DOT1XD_USR_SESSION_HELD\"`
+
+[ ] do we map to event.code for type
+
+---
+
+`device-updowns`
+
+[ ] device updowns `"ev_type": "NOTICE",` `"type": "AP_RESTARTED",`
+[ ] device updowns reason mapped to event.reason should it be mapped to event.code
+
+---
+
+## alarms
+
+[ ] start, when, last_seen timestamps
+[ ] type, "type\":\"infra_dhcp_failure\" maps to code
+[ ] severity maps to 1 and comes in as critical
+
+## audits
+
+[ ] message maps to audit_events.message `\"message\":\"Login with Role \\\"OIT_CCS_NET_ENG_WI-FI_NA_NG\\\"\",`
+
+### client events
+
+`client-info`

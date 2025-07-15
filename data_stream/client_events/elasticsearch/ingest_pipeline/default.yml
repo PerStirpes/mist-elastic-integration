@@ -189,7 +189,7 @@ processors:
       field: observer.vendor
       value: juniper
   - rename:
-      # Recommendation: add "ignore_missing: true" here to avoid errors if 'mist.client_events.model' is not present.
+      ignore_missing: true
       field: mist.client_events.model
       target_field: observer.product
   - rename:
