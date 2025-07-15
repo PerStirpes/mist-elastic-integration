@@ -222,7 +222,7 @@ Please refer to the following [document](https://www.elastic.co/guide/en/ecs/cur
 ## Mist NAC Authentication Events (`nac_events`)
 
 | Mist field (JSON) | ECS field created by pipeline                                                                             | Notes                                                   |
-| ----------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | ------ |
+| ----------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | 
 | `nas_ip`          | `observer.ip` (typed)                                                                                     | Geo-enriched → `observer.geo`, `observer.as.*`          |
 | `mac`             | `client.mac`                                                                                              |                                                         |
 | `device_mac`      | `observer.mac`                                                                                            |                                                         |
@@ -233,7 +233,7 @@ Please refer to the following [document](https://www.elastic.co/guide/en/ecs/cur
 | `nacrule_id`      | `rule.id`                                                                                                 |                                                         |
 | `idp_role`        | `user.roles`                                                                                              |                                                         |
 | _(enrichment)_    | `observer.as.asn → observer.as.number`<br>`observer.as.organization_name → observer.as.organization.name` | after GeoIP                                             |
-| _(pipeline)_      | `event.category = ["authentication"]`                                                                     | plus `"network"` for `NAC*CLIENT*[PERMIT                | DENY]` |
+| _(pipeline)_      | `event.category = ["authentication"]`                                                                     | plus `"network"` for `NAC*CLIENT*[PERMIT         DENY]` |
 | _(pipeline)_      | `event.type = "allowed"` / `"denied"`                                                                     | based on `nac_events.type`                              |
 | _(pipeline)_      | `event.outcome = "success"` / `"failure"`                                                                 |                                                         |
 | \_(related)\*     | `related.ip`, `related.user`                                                                              | adds observer IP / client MAC / observer MAC / username |
