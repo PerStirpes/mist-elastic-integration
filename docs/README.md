@@ -217,6 +217,8 @@ Please refer to the following [document](https://www.elastic.co/guide/en/ecs/cur
 | `@timestamp` | _(left as-is by Cribl)_                                            |       |
 | _Geo IP_     | `source.geo`, `source.as.*`, `destination.geo`, `destination.as.*` |       |
 
+---
+
 ## Mist NAC Authentication Events (`nac_events`)
 
 | Mist field (JSON) | ECS field created by pipeline                                                                             | Notes                                                   |
