@@ -48,6 +48,11 @@ processors:
       field: mist.mx_edge_events.type
       target_field: event.code
 
+  - rename:
+      ignore_missing: true
+      field: "@timestamp"
+      target_field: cribl_timestamp
+
 
 
   # Convert timestamp from seconds (with fractional part) to milliseconds (as long)
@@ -71,15 +76,30 @@ processors:
       #     ctx.mist.mx_edge_events.timestamp = (long) (seconds * 1000);
       #   }
 
-#   # Use the timestamp (epoch ms) to set the @timestamp field for the event
-#   - date:
-#       tag: set_event_timestamp
-#       field: mist.mx_edge_events.timestamp
-#       target_field: "@timestamp"
-#       formats:
-#         - UNIX_MS
-#       if: ctx.mist?.mx_edge_events?.timestamp != null
+  
 
+  - script:                   # 2) ensure seconds-since-epoch become milliseconds
+      description: "Convert 10-digit seconds to 13-digit millis; keep fractional parts"
+      source: |
+        if (ctx.mist.mx_edge_events.containsKey('timestamp')) {
+          def ts = ctx.mist.mx_edge_events.timestamp;
+          if (ts instanceof String) {          // tolerate quoted numbers
+            ts = Double.parseDouble(ts);
+          }
+          if (ts < 1e12) {                     // seconds → millis
+            ts = Math.round(ts * 1000);
+          } else {
+            ts = Math.round(ts);               // already millis; drop fractions
+          }
+          ctx.mist.mx_edge_events.timestamp = ts;
+        }
+  # Use the timestamp (epoch ms) to set the @timestamp field for the event
+
+  - date:                     # 3) write @timestamp
+      field: mist.mx_edge_events.timestamp
+      target_field: "@timestamp"
+      formats:
+        - UNIX_MS
   # Categorize the event under "network"
   - append:
       tag: set_event_category

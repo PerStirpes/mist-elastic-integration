@@ -32,7 +32,10 @@ processors:
       target_field: mist.device_events
       if: ctx.event?.original != null && (ctx.event.original.trim().startsWith('{') || ctx.event.original.trim().startsWith('['))
       ignore_failure: true
-
+  - rename:
+      ignore_missing: true
+      field: "@timestamp"
+      target_field: cribl_timestamp
   # 3. Map Mist device event fields to ECS or appropriate fields
   ## Common fields (present in both device-events and device-updowns topics)
   - rename:

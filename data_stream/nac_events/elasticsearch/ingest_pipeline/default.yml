@@ -89,7 +89,10 @@ processors:
       field: mist.nac_events.username
       target_field: user.name
       ignore_missing: true
-# TODO change this 
+  - rename:
+      ignore_missing: true
+      field: "@timestamp"
+      target_field: cribl_timestamp 
   - rename:
       if: "ctx.mist?.nac_events != null"
       tag: map_text_to_event_reason

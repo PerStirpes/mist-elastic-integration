@@ -28,6 +28,10 @@ processors:
       tag: json_original
       field: event.original
       target_field: mist.audit_events
+  - rename:
+      ignore_missing: true
+      field: "@timestamp"
+      target_field: cribl_timestamp
   - convert:
       ignore_failure: true
       ignore_missing: true

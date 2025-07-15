@@ -24,6 +24,10 @@ processors:
       ignore_missing: true
       tag: remove_message
       field: message
+  - rename:
+      ignore_missing: true
+      field: "@timestamp"
+      target_field: cribl_timestamp
   - json:
       tag: json_original
       field: event.original
