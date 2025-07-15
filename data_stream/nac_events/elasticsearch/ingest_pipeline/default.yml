@@ -94,14 +94,7 @@ processors:
       if: "ctx.mist?.nac_events != null"
       tag: map_text_to_event_reason
       field: mist.nac_events.text
-      target_field: event.reason
-      ignore_missing: true
-
-  - rename:
-      if: "ctx.mist?.nac_events != null"
-      tag: map_nacrule_to_rule_id
-      field: mist.nac_events.nacrule_id
-      target_field: rule.id
+      target_field: mist.nac_events.message
       ignore_missing: true
 
   - rename:

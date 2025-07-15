@@ -39,10 +39,10 @@
           type: keyword
         - name: random_mac          # True if client used MAC randomization (private MAC)
           type: boolean
+        - name: nacrule_id
+          type: keyword
         - name: crc                 # Checksum/identifier array (as long values)
           type: long
-        - name: mxedge_id           # Mist Edge device ID, if applicable
-          type: keyword
         - name: site_id             # Mist site ID where the event occurred
           type: keyword
         - name: rx_pkts             # Packets received from client (during session)

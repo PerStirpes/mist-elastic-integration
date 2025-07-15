@@ -34,12 +34,9 @@
         - name: device_id    # Device ID (UUID, if provided for certain devices)
           type: keyword
           description: Unique device identifier (may appear for non-AP devices)
-        - name: text         # Event description text (if any)
-          type: keyword
-          description: Human-readable event description or message text
         - name: timestamp    # Event timestamp (Unix epoch seconds)
           type: long
           description: Timestamp when the event occurred (epoch seconds)
-        - name: type         # Event type code
-          type: keyword
-          description: Event type code (e.g. AP_RESTARTED, AP_DISCONNECTED, SWITCH_DOWN)
+        # - name: type         # Event type code
+        #   type: keyword
+        #   description: Event type code (e.g. AP_RESTARTED, AP_DISCONNECTED, SWITCH_DOWN)

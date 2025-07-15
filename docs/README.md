@@ -177,7 +177,7 @@ Please refer to the following [document](https://www.elastic.co/guide/en/ecs/cur
 | `org_id`                             | `organization.id`              |                       |
 | `ap`                                 | `observer.mac`                 |                       |
 | `audit_id`                           | `event.id`                     |                       |
-| `reason`                             | `event.reason`                 |                       |
+| `reason`                             | `event.code`                   |                       |
 | `device_type`                        | `observer.type`                |                       |
 | _(script)_ `device_name` / `ap_name` | `observer.name`                | device_name preferred |
 | _(constant)_                         | `observer.vendor = "juniper"`  |                       |
@@ -293,28 +293,26 @@ Please refer to the following [document](https://www.elastic.co/guide/en/ecs/cur
 
 `nac-accounting`
 
-[ ] \"type\":\"NAC_ACCOUNTING_STOP\" maps to event.code
+[x] \"type\":\"NAC_ACCOUNTING_STOP\" maps to event.code
 
 `nac-events`
 
-[] "auth_type": "mab",
-[ ] type": "NAC_CLIENT_DENY",
-[ ] `text` maps to event.reason `\"text\":\"No policy rules are hit, rejected by implicit deny\"`
+[x] type": "NAC_CLIENT_DENY", mapped to event.code
+[x] `text` maps to mist.nac_events.message example `\"text\":\"No policy rules are hit, rejected by implicit deny\"`
 
 ## device events ingest pipeline
 
 `device-events`
-[ ] has no message
-[ ] `text` maps to nothing `\"text\":\"_USR_SESSION_HELD: MAC-RADIUS User 0 session with MacAddress interface mge-0/0/38.0 vlan (null) is held\"`
-[ ] device events | has `type` `"type\":\"SW_USR_SESSION_HELD\"`
-[ ] do we map to event.code for type
+[x] `text` maps to `mist.device_events.message` example `\"text\":\"_USR_SESSION_HELD: MAC-RADIUS User 0 session with MacAddress interface mge-0/0/38.0 vlan (null) is held\"`
+[x] device events | has `type` `"type\":\"SW_USR_SESSION_HELD\"`
 
 ---
 
 `device-updowns`
 
-[ ] device updowns `"ev_type": "NOTICE",` `"type": "AP_RESTARTED",`
-[ ] device updowns reason mapped to event.reason should it be mapped to event.code?
+[x] device updowns `"ev_type": "NOTICE",`
+[x] `"type": "AP_RESTARTED",` mapped to event.code
+[x] device updowns reason mapped to mist.device_events.message
 
 ---
 

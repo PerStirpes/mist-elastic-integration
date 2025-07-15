@@ -60,7 +60,7 @@ processors:
       ignore_missing: true
   - rename:
       field: mist.device_events.reason          # Reason code or description
-      target_field: event.reason
+      target_field: mist.device_events.message
       ignore_missing: true
   - rename:
       field: mist.device_events.device_type     # "ap", "switch", etc.
@@ -77,9 +77,17 @@ processors:
   ## Set constant fields
   - set:
       field: observer.vendor
-      value: "juniper"                          # All these events are from Juniper (Mist)
-
-
+      value: "juniper" 
+                               # All these events are from Juniper (Mist)
+  - rename:
+      field: mist.device_events.text
+      target_field: mist.device_events.message
+      ignore_missing: true
+  - rename:
+      field: mist.device_events.type
+      target_field: event.code
+      ignore_missing: true
+      
  # depending on the type of event, the ap_name or device_name will be used as the observer.name
   - script:
       description: Set observer.name from device_name or ap_name (device_name takes priority)
