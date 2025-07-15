@@ -1,5 +1,5 @@
 ---
-description: "Pipeline to process mist client: info, join, sessions | device: events, updowns, | mx-edge event logs"
+description: "Pipeline to process mist client: info, join, sessions | mx-edge event logs"
 processors:
   - set:
       tag: set_ecs_version
@@ -196,17 +196,7 @@ processors:
       ignore_missing: true
       field: mist.client_events.ap
       target_field: observer.mac
-# depending on the type of event, the ap_name or device_name will be used as the observer.name
-  - script:
-      description: Set observer.name from device_name or ap_name (device_name takes priority)
-      lang: painless
-      source: |
-        def dev = ctx?.mist?.client_events?.device_name;
-        def ap = ctx?.mist?.client_events?.ap_name;
-        if ((dev != null && !dev.isEmpty()) || (ap != null && !ap.isEmpty())) {
-          ctx.observer = ctx.observer != null ? ctx.observer : [:];
-          ctx.observer.name = dev != null && !dev.isEmpty() ? dev : ap;
-        }
+
   - rename:
       ignore_missing: true
       field: mist.client_events.device_type

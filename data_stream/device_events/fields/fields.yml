@@ -1,65 +1,45 @@
 - name: mist
   type: group
   fields:
-    - name: device_events
+    - name: device_events    # Unified field group for all Mist device events and up/down events
       type: group
       fields:
-        - name: rssi
-          type: long
-        - name: bssid
-          type: keyword
-        - name: wlan_id
-          type: keyword
-        - name: termination_reason
-          type: long
-        - name: disconnect_float
-          type: float
-        - name: version
-          type: long 
-        - name: band
-          type: keyword
-        - name: connect_float
-          type: float
-        - name: gateway
-          type: keyword
-        - name: timestamp
-          type: long
-        - name: psk_id
-          type: keyword
-        - name: mistjsonarray
-          type: boolean
-        - name: index
-          type: keyword
-        - name: source
-          type: keyword
-        - name: sourcetype
-          type: keyword
-        - name: site_id
-          type: keyword
-        - name: random_mac
-          type: boolean
-        - name: mxcluster_id
-          type: keyword
-        - name: mxedge_name
-          type: keyword
-        - name: mxedge_id
-          type: keyword
         - name: audit_id
           type: keyword
-        - name: ap_name
+          description: Unique audit/event ID (if provided by Mist)
+        - name: ap           # Device MAC or ID (often MAC without colons)
           type: keyword
-        - name: device_name
+          description: Device MAC address or identifier
+        - name: ap_name      # Device's name as configured in Mist
           type: keyword
-        - name: ev_type
+          description: Device name (AP hostname or identifier)
+        - name: device_name  # (Sometimes same as ap_name for APs, or a separate name field)
           type: keyword
-        - name: reason
+          description: Device name (alternative field; e.g. for switches/gateways)
+        - name: device_type  # e.g. "ap", "switch", "gateway"
           type: keyword
-        - name: device_id
+          description: Type of device reporting the event
+        - name: ev_type      # Event severity or category
           type: keyword
-        - name: type
+          description: Event severity level (e.g. NOTICE, INFO, WARN)
+        - name: reason       # Reason code or description for the event
           type: keyword
-          
-      
-  
-
-
+          description: Reason or cause of event (if provided by Mist)
+        - name: site_id      # Mist site ID (UUID)
+          type: keyword
+          description: Site identifier (UUID) where the event occurred
+        - name: site_name    # Mist site name
+          type: keyword
+          description: Site name as defined in Mist
+        - name: device_id    # Device ID (UUID, if provided for certain devices)
+          type: keyword
+          description: Unique device identifier (may appear for non-AP devices)
+        - name: text         # Event description text (if any)
+          type: keyword
+          description: Human-readable event description or message text
+        - name: timestamp    # Event timestamp (Unix epoch seconds)
+          type: long
+          description: Timestamp when the event occurred (epoch seconds)
+        - name: type         # Event type code
+          type: keyword
+          description: Event type code (e.g. AP_RESTARTED, AP_DISCONNECTED, SWITCH_DOWN)
