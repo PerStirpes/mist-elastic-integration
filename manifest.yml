@@ -1,7 +1,7 @@
 format_version: 3.1.4
 name: mist
 title: Mist
-version: 1.0.4
+version: 1.0.5
 description: Process juniper_mist logs
 type: integration
 categories:
