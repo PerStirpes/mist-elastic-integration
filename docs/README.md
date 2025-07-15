@@ -12,14 +12,24 @@ client_events includes
 -   client-join
 -   client-info
 -   client-sessions
+
+device_events include
+
 -   device-events
 -   device updowns
+
+mx-edge
+
 -   mx-edge events
 
 nac_events includes
 
 -   nac-accounting
 -   nac-events
+
+audits
+
+alarms
 
 ### Mist Events
 
@@ -125,6 +135,88 @@ Mist client events
 
 Please refer to the following [document](https://www.elastic.co/guide/en/ecs/current/ecs-field-reference.html) for detailed information on ECS fields.
 
+## Mist Client Events (info | join | session)
+
+| Mist field (JSON)             | ECS field created by pipeline                                      | Notes                                                     |
+| ----------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------- |
+| `client_family`               | `device.model.identifier`                                          |                                                           |
+| `client_manufacture`          | `device.manufacturer`                                              |                                                           |
+| `client_model`                | `device.model.name`                                                |                                                           |
+| `client_os`                   | `device.os.version`                                                |                                                           |
+| `ssid`                        | `network.name`                                                     |                                                           |
+| `next_ap`                     | `destination.mac`                                                  |                                                           |
+| `ap`                          | `server.mac` & `observer.mac`                                      | duplicated                                                |
+| `ap_name`                     | `observer.product`                                                 | _recommend mapping to `observer.name` to avoid overwrite_ |
+| `event_id`                    | `transaction.id`                                                   |                                                           |
+| `service`                     | `service.name`                                                     |                                                           |
+| `client_hostname`, `hostname` | `client.hostname`                                                  |                                                           |
+| `duration`                    | `event.duration` (sec → ns)                                        |                                                           |
+| `disconnect`                  | `event.end` (sec → ms)                                             |                                                           |
+| `id`                          | `event.id`                                                         |                                                           |
+| `count`                       | `event.sequence`                                                   |                                                           |
+| `connect`                     | `event.start` (sec → ms)                                           |                                                           |
+| `reason`                      | `event.reason`                                                     |                                                           |
+| `component`                   | `event.provider`                                                   |                                                           |
+| `model`                       | `observer.product`                                                 | may be overwritten by `ap_name`                           |
+| `device_type`                 | `observer.type`                                                    |                                                           |
+| `client_username`             | `client.user.name`                                                 | (mapped twice)                                            |
+| `client_ip`, `ip`             | `client.ip` (typed)                                                |                                                           |
+| `mac`                         | `client.mac`                                                       |                                                           |
+| `src_ip`                      | `source.ip`                                                        |                                                           |
+| `site_name`                   | `organization.name`                                                |                                                           |
+| `org_id`                      | `organization.id`                                                  |                                                           |
+| _Geo IP enrich_               | `source.geo`, `source.as.*`, `destination.geo`, `destination.as.*` |                                                           |
+
+---
+
+## Mist Device Events (+ up/down)
+
+| Mist field                           | ECS field                      | Notes                 |
+| ------------------------------------ | ------------------------------ | --------------------- |
+| `site_name`                          | `organization.name`            |                       |
+| `org_id`                             | `organization.id`              |                       |
+| `ap`                                 | `observer.mac`                 |                       |
+| `audit_id`                           | `event.id`                     |                       |
+| `reason`                             | `event.reason`                 |                       |
+| `device_type`                        | `observer.type`                |                       |
+| _(script)_ `device_name` / `ap_name` | `observer.name`                | device_name preferred |
+| _(constant)_                         | `observer.vendor = "juniper"`  |                       |
+| _(tag)_                              | `event.category = ["network"]` |                       |
+| `mac`                                | — (removed)                    | duplicate             |
+
+---
+
+## Mist Alarms
+
+| Mist field  | ECS field                                                          | Notes                     |
+| ----------- | ------------------------------------------------------------------ | ------------------------- |
+| `last_seen` | `event.end`                                                        | ISO-8601 parsed           |
+| `start`     | `event.start`                                                      | epoch ms                  |
+| `id`        | `event.id`                                                         |                           |
+| `type`      | `event.code`                                                       |                           |
+| `org_id`    | `organization.id`                                                  |                           |
+| `hostnames` | `host.hostname`                                                    |                           |
+| `macs`      | `client.mac`                                                       |                           |
+| `servers`   | `server.ip` (typed)                                                |                           |
+| `site_name` | `organization.name`                                                |                           |
+| _(script)_  | `event.kind = alert`                                               |                           |
+| _(script)_  | `event.category`, `event.type`, `event.severity`                   | from `group` + `severity` |
+| _Geo IP_    | `source.geo`, `source.as.*`, `destination.geo`, `destination.as.*` |                           |
+
+---
+
+## Mist Audit Events
+
+| Mist field   | ECS field                                                          | Notes |
+| ------------ | ------------------------------------------------------------------ | ----- |
+| `src_ip`     | `source.ip` (typed)                                                |       |
+| `org_id`     | `organization.id`                                                  |       |
+| `id`         | `event.id`                                                         |       |
+| `admin_name` | `user.full_name`                                                   |       |
+| `user_agent` | `user_agent.original`                                              |       |
+| `@timestamp` | _(left as-is by Cribl)_                                            |       |
+| _Geo IP_     | `source.geo`, `source.as.*`, `destination.geo`, `destination.as.*` |       |
+
 **Exported fields**
 
 | Field                 | Description                                                                               | Type             |
@@ -149,3 +241,46 @@ Please refer to the following [document](https://www.elastic.co/guide/en/ecs/cur
 | log.file.vol          | The serial number of the volume that contains a file. (Windows-only)                      | keyword          |
 | log.flags             | Flags for the log file.                                                                   | keyword          |
 | log.offset            | Offset of the entry in the log file.                                                      | long             |
+
+## Mist NAC Authentication Events (`nac_events`)
+
+| Mist field (JSON) | ECS field created by pipeline                                                                             | Notes                                                   |
+| ----------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | ------ |
+| `nas_ip`          | `observer.ip` (typed)                                                                                     | Geo-enriched → `observer.geo`, `observer.as.*`          |
+| `mac`             | `client.mac`                                                                                              |                                                         |
+| `device_mac`      | `observer.mac`                                                                                            |                                                         |
+| `nas_vendor`      | `observer.vendor`                                                                                         |                                                         |
+| `org_id`          | `organization.id`                                                                                         |                                                         |
+| `username`        | `user.name`                                                                                               |                                                         |
+| `text`            | `event.reason`                                                                                            |                                                         |
+| `nacrule_id`      | `rule.id`                                                                                                 |                                                         |
+| `idp_role`        | `user.roles`                                                                                              |                                                         |
+| _(enrichment)_    | `observer.as.asn → observer.as.number`<br>`observer.as.organization_name → observer.as.organization.name` | after GeoIP                                             |
+| _(pipeline)_      | `event.category = ["authentication"]`                                                                     | plus `"network"` for `NAC*CLIENT*[PERMIT                | DENY]` |
+| _(pipeline)_      | `event.type = "allowed"` / `"denied"`                                                                     | based on `nac_events.type`                              |
+| _(pipeline)_      | `event.outcome = "success"` / `"failure"`                                                                 |                                                         |
+| \_(related)\*     | `related.ip`, `related.user`                                                                              | adds observer IP / client MAC / observer MAC / username |
+
+---
+
+## Mist NAC Accounting Events (`nac_accounting`)
+
+| Mist field (JSON) | ECS field created by pipeline                                                                             | Notes                                                               |
+| ----------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `nas_ip`          | `observer.ip` (typed)                                                                                     | Geo-enriched                                                        |
+| `client_ip`       | `client.ip` (typed)                                                                                       | Geo-related (added to `related.ip`)                                 |
+| `type`            | `event.code`                                                                                              | (`NAC_ACCOUNTING_*`)                                                |
+| `mac`             | `client.mac`                                                                                              |                                                                     |
+| `username`        | `user.name`                                                                                               |                                                                     |
+| `nas_vendor`      | `observer.vendor`                                                                                         |                                                                     |
+| `org_id`          | `organization.id`                                                                                         |                                                                     |
+| `device_mac`      | `observer.mac`                                                                                            |                                                                     |
+| `ap`              | `observer.mac`                                                                                            | overwrites `device_mac` if both present                             |
+| _(enrichment)_    | `observer.as.asn → observer.as.number`<br>`observer.as.organization_name → observer.as.organization.name` |                                                                     |
+| _(pipeline)_      | `event.category = ["network"]`                                                                            |                                                                     |
+| _(pipeline)_      | `event.type` = `"start"` / `"end"` / `"info"`                                                             | based on `type`                                                     |
+| _(pipeline)_      | `event.outcome = "success"`                                                                               |                                                                     |
+| \_(related)\*     | `related.ip`, `related.user`                                                                              | adds observer IP / client IP / client MAC / observer MAC / username |
+| _(cleanup)_       | removes `nas_ip`, `client_ip` from `mist.nac_accounting` payload                                          |
+
+\* **related.\* fields** are appended to help with cross-event correlation; they are not direct renames.
