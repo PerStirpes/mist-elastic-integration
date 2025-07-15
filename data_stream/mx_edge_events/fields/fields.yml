@@ -3,63 +3,51 @@
   fields:
     - name: mx_edge_events
       type: group
+      description: "Mist Edge (mx-edge) event fields."
       fields:
-        - name: rssi
-          type: long
-        - name: bssid
+        - name: org_id
           type: keyword
-        - name: wlan_id
-          type: keyword
-        - name: termination_reason
-          type: long
-        - name: disconnect_float
-          type: float
-        - name: version
-          type: long 
-        - name: band
-          type: keyword
-        - name: connect_float
-          type: float
-        - name: gateway
-          type: keyword
-        - name: timestamp
-          type: long
-        - name: psk_id
-          type: keyword
-        - name: mistjsonarray
-          type: boolean
-        - name: index
-          type: keyword
-        - name: source
-          type: keyword
-        - name: sourcetype
-          type: keyword
+          description: "Organization ID associated with the event."
         - name: site_id
           type: keyword
-        - name: random_mac
-          type: boolean
+          description: "Site ID associated with the event."
         - name: mxcluster_id
           type: keyword
-        - name: mxedge_name
-          type: keyword
+          description: "Mist Edge cluster ID."
         - name: mxedge_id
           type: keyword
+          description: "Unique identifier of the Mist Edge device."
+        - name: mxedge_name
+          type: keyword
+          description: "Name of the Mist Edge device."
         - name: audit_id
           type: keyword
-        - name: ap_name
-          type: keyword
-        - name: device_name
-          type: keyword
-        - name: ev_type
-          type: keyword
-        - name: reason
-          type: keyword
-        - name: device_id
-          type: keyword
+          description: "Audit trail ID for configuration changes (if applicable)."
+        - name: timestamp
+          type: long
+          description: "Event timestamp (epoch milliseconds)."
         - name: type
           type: keyword
-          
-      
-  
-
-
+          description: "Type of the Mist Edge event (event code/name)."
+        - name: component
+          type: keyword
+          description: "Component or subsystem that generated the event (if provided)."
+        - name: reason
+          type: keyword
+          description: "Reason or additional context for the event (if available)."
+        - name: source
+          type: keyword
+          description: "Source of the event data (if provided by the integration)."
+        - name: sourcetype
+          type: keyword
+          description: "Source type of the event data (if provided by the integration)."
+        - name: version
+          type: long
+          description: "Version number related to the event (for example, firmware version, if applicable)."
+        - name: svc_info
+          type: group
+          description: "Nested service-specific info for certain event types."
+          fields:
+            - name: inactive_vlans
+              type: long
+              description: "List of inactive VLAN IDs (for events like TT_INACTIVE_VLANS)."

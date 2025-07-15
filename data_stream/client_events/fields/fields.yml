@@ -38,12 +38,6 @@
           type: keyword
         - name: random_mac
           type: boolean
-        - name: mxcluster_id
-          type: keyword
-        - name: mxedge_name
-          type: keyword
-        - name: mxedge_id
-          type: keyword
         - name: audit_id
           type: keyword
         - name: ap_name
