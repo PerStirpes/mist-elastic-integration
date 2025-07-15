@@ -43,28 +43,33 @@ processors:
       field: mist.mx_edge_events.org_id
       target_field: organization.id
 
+  - rename:
+      ignore_missing: true
+      field: mist.mx_edge_events.type
+      target_field: event.code
+
 
 
   # Convert timestamp from seconds (with fractional part) to milliseconds (as long)
 #   - script:
 #       tag: convert_timestamp_to_ms
 #       lang: painless
-#       if: ctx.mist?.mx_edge_events?.timestamp != null
-#       source: |
-#         def ts = ctx.mist.mx_edge_events.timestamp;
-#         if (ts instanceof String) {
-#           // Parse string (which may include fractional seconds) to double, then to ms
-#           try {
-#             double seconds = Double.parseDouble(ts);
-#             ctx.mist.mx_edge_events.timestamp = (long) (seconds * 1000);
-#           } catch (Exception e) {
-#             // If parse fails, leave timestamp as-is (or it will be removed later if not parseable)
-#           }
-#         } else if (ts instanceof Number) {
-#           // If already a number (seconds), convert to milliseconds
-#           double seconds = ((Number) ts).doubleValue();
-#           ctx.mist.mx_edge_events.timestamp = (long) (seconds * 1000);
-#         }
+      # if: ctx.mist?.mx_edge_events?.timestamp != null
+      # source: |
+      #   def ts = ctx.mist.mx_edge_events.timestamp;
+      #   if (ts instanceof String) {
+      #     // Parse string (which may include fractional seconds) to double, then to ms
+      #     try {
+      #       double seconds = Double.parseDouble(ts);
+      #       ctx.mist.mx_edge_events.timestamp = (long) (seconds * 1000);
+      #     } catch (Exception e) {
+      #       // If parse fails, leave timestamp as-is (or it will be removed later if not parseable)
+      #     }
+      #   } else if (ts instanceof Number) {
+      #     // If already a number (seconds), convert to milliseconds
+      #     double seconds = ((Number) ts).doubleValue();
+      #     ctx.mist.mx_edge_events.timestamp = (long) (seconds * 1000);
+      #   }
 
 #   # Use the timestamp (epoch ms) to set the @timestamp field for the event
 #   - date:

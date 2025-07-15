@@ -264,28 +264,14 @@ Please refer to the following [document](https://www.elastic.co/guide/en/ecs/cur
 
 **Exported fields**
 
-| Field                 | Description                                                                               | Type             |
-| --------------------- | ----------------------------------------------------------------------------------------- | ---------------- |
-| @timestamp            | Event timestamp.                                                                          | date             |
-| cloud.image.id        | Image ID for the cloud instance.                                                          | keyword          |
-| container.labels      | Image labels.                                                                             | object           |
-| data_stream.dataset   | Data stream dataset name.                                                                 | constant_keyword |
-| data_stream.namespace | Data stream namespace.                                                                    | constant_keyword |
-| data_stream.type      | Data stream type.                                                                         | constant_keyword |
-| event.dataset         | Event dataset                                                                             | constant_keyword |
-| event.module          | Event module                                                                              | constant_keyword |
-| host.containerized    | If the host is a container.                                                               | boolean          |
-| host.os.build         | OS build information.                                                                     | keyword          |
-| host.os.codename      | OS codename, if any.                                                                      | keyword          |
-| input.type            | Type of Filebeat input.                                                                   | keyword          |
-| log.file.device_id    | ID of the device containing the filesystem where the file resides.                        | keyword          |
-| log.file.fingerprint  | The sha256 fingerprint identity of the file when fingerprinting is enabled.               | keyword          |
-| log.file.idxhi        | The high-order part of a unique identifier that is associated with a file. (Windows-only) | keyword          |
-| log.file.idxlo        | The low-order part of a unique identifier that is associated with a file. (Windows-only)  | keyword          |
-| log.file.inode        | Inode number of the log file.                                                             | keyword          |
-| log.file.vol          | The serial number of the volume that contains a file. (Windows-only)                      | keyword          |
-| log.flags             | Flags for the log file.                                                                   | keyword          |
-| log.offset            | Offset of the entry in the log file.                                                      | long             |
+| Field                 | Description               | Type             |
+| --------------------- | ------------------------- | ---------------- |
+| @timestamp            | Event timestamp.          | date             |
+| data_stream.dataset   | Data stream dataset name. | constant_keyword |
+| data_stream.namespace | Data stream namespace.    | constant_keyword |
+| data_stream.type      | Data stream type.         | constant_keyword |
+| event.dataset         | Event dataset             | constant_keyword |
+| event.module          | Event module              | constant_keyword |
 
 # TODO
 
@@ -318,14 +304,11 @@ Please refer to the following [document](https://www.elastic.co/guide/en/ecs/cur
 
 ## alarms ingest pipeline
 
-[ ] has no message
-[ ] type, "type\":\"infra_dhcp_failure\" maps to `event.code`
-[ ] severity maps to 1 and comes in as critical
-[ ] start, when, last_seen timestamps
+[xs] type, "type\":\"infra_dhcp_failure\" maps to `event.code`
 
 ## audits ingest pipeline
 
-[ ] message maps to audit_events.message `\"message\":\"Login with Role \\\"_NET_ENG_WI-FI_NA_NG\\\"\",`
+[x] message maps to audit_events.message `\"message\":\"Login with Role \\\"_NET_ENG_WI-FI_NA_NG\\\"\",`
 
 ## client events ingest pipeline
 
@@ -340,4 +323,12 @@ Please refer to the following [document](https://www.elastic.co/guide/en/ecs/cur
 
 ## mx-edge ingest pipeline
 
-[ ] type `"type": "TT_INACTIVE_VLANS"`,
+[x] type `"type": "TT_INACTIVE_VLANS"`,
+
+## Misc
+
+[ ] drop "agent_id_status": "missing"
+[ ] @timestamp is cribl ingested timestap
+
+-   change to ingested at cribl
+    [ ] parse orgininal timestamp
