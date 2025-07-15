@@ -1,0 +1,65 @@
+- name: mist
+  type: group
+  fields:
+    - name: mx_edge_events
+      type: group
+      fields:
+        - name: rssi
+          type: long
+        - name: bssid
+          type: keyword
+        - name: wlan_id
+          type: keyword
+        - name: termination_reason
+          type: long
+        - name: disconnect_float
+          type: float
+        - name: version
+          type: long 
+        - name: band
+          type: keyword
+        - name: connect_float
+          type: float
+        - name: gateway
+          type: keyword
+        - name: timestamp
+          type: long
+        - name: psk_id
+          type: keyword
+        - name: mistjsonarray
+          type: boolean
+        - name: index
+          type: keyword
+        - name: source
+          type: keyword
+        - name: sourcetype
+          type: keyword
+        - name: site_id
+          type: keyword
+        - name: random_mac
+          type: boolean
+        - name: mxcluster_id
+          type: keyword
+        - name: mxedge_name
+          type: keyword
+        - name: mxedge_id
+          type: keyword
+        - name: audit_id
+          type: keyword
+        - name: ap_name
+          type: keyword
+        - name: device_name
+          type: keyword
+        - name: ev_type
+          type: keyword
+        - name: reason
+          type: keyword
+        - name: device_id
+          type: keyword
+        - name: type
+          type: keyword
+          
+      
+  
+
+
