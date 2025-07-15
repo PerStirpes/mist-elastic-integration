@@ -217,31 +217,6 @@ Please refer to the following [document](https://www.elastic.co/guide/en/ecs/cur
 | `@timestamp` | _(left as-is by Cribl)_                                            |       |
 | _Geo IP_     | `source.geo`, `source.as.*`, `destination.geo`, `destination.as.*` |       |
 
-**Exported fields**
-
-| Field                 | Description                                                                               | Type             |
-| --------------------- | ----------------------------------------------------------------------------------------- | ---------------- |
-| @timestamp            | Event timestamp.                                                                          | date             |
-| cloud.image.id        | Image ID for the cloud instance.                                                          | keyword          |
-| container.labels      | Image labels.                                                                             | object           |
-| data_stream.dataset   | Data stream dataset name.                                                                 | constant_keyword |
-| data_stream.namespace | Data stream namespace.                                                                    | constant_keyword |
-| data_stream.type      | Data stream type.                                                                         | constant_keyword |
-| event.dataset         | Event dataset                                                                             | constant_keyword |
-| event.module          | Event module                                                                              | constant_keyword |
-| host.containerized    | If the host is a container.                                                               | boolean          |
-| host.os.build         | OS build information.                                                                     | keyword          |
-| host.os.codename      | OS codename, if any.                                                                      | keyword          |
-| input.type            | Type of Filebeat input.                                                                   | keyword          |
-| log.file.device_id    | ID of the device containing the filesystem where the file resides.                        | keyword          |
-| log.file.fingerprint  | The sha256 fingerprint identity of the file when fingerprinting is enabled.               | keyword          |
-| log.file.idxhi        | The high-order part of a unique identifier that is associated with a file. (Windows-only) | keyword          |
-| log.file.idxlo        | The low-order part of a unique identifier that is associated with a file. (Windows-only)  | keyword          |
-| log.file.inode        | Inode number of the log file.                                                             | keyword          |
-| log.file.vol          | The serial number of the volume that contains a file. (Windows-only)                      | keyword          |
-| log.flags             | Flags for the log file.                                                                   | keyword          |
-| log.offset            | Offset of the entry in the log file.                                                      | long             |
-
 ## Mist NAC Authentication Events (`nac_events`)
 
 | Mist field (JSON) | ECS field created by pipeline                                                                             | Notes                                                   |
@@ -284,3 +259,28 @@ Please refer to the following [document](https://www.elastic.co/guide/en/ecs/cur
 | _(cleanup)_       | removes `nas_ip`, `client_ip` from `mist.nac_accounting` payload                                          |
 
 \* **related.\* fields** are appended to help with cross-event correlation; they are not direct renames.
+
+**Exported fields**
+
+| Field                 | Description                                                                               | Type             |
+| --------------------- | ----------------------------------------------------------------------------------------- | ---------------- |
+| @timestamp            | Event timestamp.                                                                          | date             |
+| cloud.image.id        | Image ID for the cloud instance.                                                          | keyword          |
+| container.labels      | Image labels.                                                                             | object           |
+| data_stream.dataset   | Data stream dataset name.                                                                 | constant_keyword |
+| data_stream.namespace | Data stream namespace.                                                                    | constant_keyword |
+| data_stream.type      | Data stream type.                                                                         | constant_keyword |
+| event.dataset         | Event dataset                                                                             | constant_keyword |
+| event.module          | Event module                                                                              | constant_keyword |
+| host.containerized    | If the host is a container.                                                               | boolean          |
+| host.os.build         | OS build information.                                                                     | keyword          |
+| host.os.codename      | OS codename, if any.                                                                      | keyword          |
+| input.type            | Type of Filebeat input.                                                                   | keyword          |
+| log.file.device_id    | ID of the device containing the filesystem where the file resides.                        | keyword          |
+| log.file.fingerprint  | The sha256 fingerprint identity of the file when fingerprinting is enabled.               | keyword          |
+| log.file.idxhi        | The high-order part of a unique identifier that is associated with a file. (Windows-only) | keyword          |
+| log.file.idxlo        | The low-order part of a unique identifier that is associated with a file. (Windows-only)  | keyword          |
+| log.file.inode        | Inode number of the log file.                                                             | keyword          |
+| log.file.vol          | The serial number of the volume that contains a file. (Windows-only)                      | keyword          |
+| log.flags             | Flags for the log file.                                                                   | keyword          |
+| log.offset            | Offset of the entry in the log file.                                                      | long             |
