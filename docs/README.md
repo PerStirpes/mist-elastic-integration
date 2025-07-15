@@ -289,13 +289,24 @@ Please refer to the following [document](https://www.elastic.co/guide/en/ecs/cur
 
 # TODO
 
+## nac events ingest pipeline
+
+`nac-accounting`
+
+[ ] \"type\":\"NAC_ACCOUNTING_STOP\" maps to event.code
+
+`nac-events`
+
+[] "auth_type": "mab",
+[ ] type": "NAC_CLIENT_DENY",
+[ ] `text` maps to event.reason `\"text\":\"No policy rules are hit, rejected by implicit deny\"`
+
 ## device events ingest pipeline
 
 `device-events`
-[ ] device events | has `text` `\"text\":\"DOT1XD_USR_SESSION_HELD: MAC-RADIUS User 0013954a9c24 session with MacAddress 00:13:95:4a:9c:24interface mge-0/0/38.0 vlan (null) is held\"`
-
-[ ] device events | has `type` `"type\":\"SW_DOT1XD_USR_SESSION_HELD\"`
-
+[ ] has no message
+[ ] `text` maps to nothing `\"text\":\"_USR_SESSION_HELD: MAC-RADIUS User 0 session with MacAddress interface mge-0/0/38.0 vlan (null) is held\"`
+[ ] device events | has `type` `"type\":\"SW_USR_SESSION_HELD\"`
 [ ] do we map to event.code for type
 
 ---
@@ -303,20 +314,32 @@ Please refer to the following [document](https://www.elastic.co/guide/en/ecs/cur
 `device-updowns`
 
 [ ] device updowns `"ev_type": "NOTICE",` `"type": "AP_RESTARTED",`
-[ ] device updowns reason mapped to event.reason should it be mapped to event.code
+[ ] device updowns reason mapped to event.reason should it be mapped to event.code?
 
 ---
 
-## alarms
+## alarms ingest pipeline
 
-[ ] start, when, last_seen timestamps
-[ ] type, "type\":\"infra_dhcp_failure\" maps to code
+[ ] has no message
+[ ] type, "type\":\"infra_dhcp_failure\" maps to `event.code`
 [ ] severity maps to 1 and comes in as critical
+[ ] start, when, last_seen timestamps
 
-## audits
+## audits ingest pipeline
 
-[ ] message maps to audit_events.message `\"message\":\"Login with Role \\\"OIT_CCS_NET_ENG_WI-FI_NA_NG\\\"\",`
+[ ] message maps to audit_events.message `\"message\":\"Login with Role \\\"_NET_ENG_WI-FI_NA_NG\\\"\",`
 
-### client events
+## client events ingest pipeline
 
 `client-info`
+[ ] has no message
+
+`client-join`
+[ ] has no message
+
+`client-session`
+[ ] termination reason
+
+## mx-edge ingest pipeline
+
+[ ] type `"type": "TT_INACTIVE_VLANS"`,
