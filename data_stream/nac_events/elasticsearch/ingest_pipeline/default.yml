@@ -50,7 +50,7 @@ processors:
   - convert:
       if: "ctx.mist?.nac_events?.random_mac != null"
       tag: random_mac_to_bool_acc
-      field: mist.nac_accounting.random_mac
+      field: mist.nac_events.random_mac
       type: boolean          # <-- converts the string "false"/"true" to real booleans
       ignore_missing: true   # don’t fail if the field is absent
       ignore_failure: true   # don’t fail if the value can’t be parsed
@@ -251,7 +251,7 @@ processors:
   - rename:
      tag: map_nac_event_tupe_to_event_code
      field: mist.nac_events.type
-     target_field: mist.event.code
+     target_field: event.code
      ignore_missing: true
      
   - remove:

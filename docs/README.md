@@ -273,8 +273,6 @@ Please refer to the following [document](https://www.elastic.co/guide/en/ecs/cur
 | event.dataset         | Event dataset             | constant_keyword |
 | event.module          | Event module              | constant_keyword |
 
-# TODO
-
 ## nac events ingest pipeline
 
 `nac-accounting`
@@ -329,19 +327,19 @@ Please refer to the following [document](https://www.elastic.co/guide/en/ecs/cur
 ## Misc
 
 [ ] drop "agent_id_status": "missing"
-[ ] @timestamp is cribl ingested timestap
+[x] @timestamp is cribl ingested timestap
 
 -   change to ingested at cribl
     [x] parse orgininal timestamp
 
 # change timestamp
 
-[ ] audits "timestamp\":1746446688.844081
-[ ] alarms "timestamp\":1750694690.7971199
-[ ] client-events \"timestamp\":1745341990 "timestamp\":1751916822 \"timestamp\":1751998117
+[x] audits "timestamp\":1746446688.844081
+[x] alarms "timestamp\":1750694690.7971199
+[x] client-events \"timestamp\":1745341990 "timestamp\":1751916822 \"timestamp\":1751998117
 [x] device-events "timestamp\":1750701781 and "timestamp\":1750701995
 [x] mx-edge \"timestamp\":\"1750701897.710873\"
-[ ] nac-events "timestamp\":1750701809585 \"timestamp\":1750701736107
+[x] nac-events "timestamp\":1750701809585 \"timestamp\":1750701736107
 
 ### todo
 
@@ -355,5 +353,3 @@ in client_events should
     ctx.event.duration = ctx.event.duration \* 1000000000;
 
 be converted to 1000000000L
-
-nac_events messed up
