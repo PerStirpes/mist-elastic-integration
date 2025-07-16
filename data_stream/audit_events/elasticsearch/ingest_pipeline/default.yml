@@ -32,6 +32,40 @@ processors:
       ignore_missing: true
       field: "@timestamp"
       target_field: cribl_timestamp
+# Normalize the timestamp field 
+ 
+  - script:
+      tag: normalize_timestamp_millis
+      lang: painless
+      source: |-
+        def ne = ctx.mist?.audit_events;
+        if (ne?.timestamp != null) {
+          // parse any numeric or string value into a double
+          double t = Double.parseDouble(ne.timestamp.toString());
+          // if it looks like seconds (10-digit / fractional), convert to ms
+          if (t < 1e12) {
+            t *= 1000;
+          }
+          ne.timestamp_millis = (long) t;
+        }
+        
+  - date:
+      description: "Parse normalized timestamp to @timestamp"
+      field: "mist.audit_events.timestamp_millis"
+      target_field: "@timestamp"
+      formats: ["UNIX_MS"]
+      output_format: "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+  - remove:
+      ignore_missing: true
+      tag: remove_timestamp_millis
+      field: mist.audit_events.timestamp_millis
+
+  - remove:
+      ignore_missing: true
+      tag: remove_timestamp
+      field: mist.audit_events.timestamp
+        
+      
   - convert:
       ignore_failure: true
       ignore_missing: true

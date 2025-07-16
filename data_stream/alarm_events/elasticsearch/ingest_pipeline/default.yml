@@ -32,6 +32,39 @@ processors:
       tag: json_original
       field: event.original
       target_field: mist.alarm_events
+# Normalize the timestamp field 
+# --- inside your processors list ---
+  - script:
+      tag: normalize_timestamp_millis
+      lang: painless
+      source: |-
+        def ne = ctx.mist?.alarm_events;
+        if (ne?.timestamp != null) {
+          // parse any numeric or string value into a double
+          double t = Double.parseDouble(ne.timestamp.toString());
+          // if it looks like seconds (10-digit / fractional), convert to ms
+          if (t < 1e12) {
+            t *= 1000;
+          }
+          ne.timestamp_millis = (long) t;
+        }
+
+  - date:
+      description: "Parse normalized timestamp to @timestamp"
+      field: "mist.alarm_events.timestamp_millis"
+      target_field: "@timestamp"
+      formats: ["UNIX_MS"]
+      output_format: "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+  - remove:
+      ignore_missing: true
+      tag: remove_timestamp_millis
+      field: mist.alarm_events.timestamp_millis
+
+  - remove:
+      ignore_missing: true
+      tag: remove_timestamp
+      field: mist.alarm_events.timestamp
+
 # Juniper Mist can batch multiple alarms into one webhook if they happen within a short window. or—even inside a single event—certain fields (depending on the alarm definition) may appear as arrays of values. 
 #   # 3. Handle fields that might be arrays (take the first element if so) before date parsing
   # - script:

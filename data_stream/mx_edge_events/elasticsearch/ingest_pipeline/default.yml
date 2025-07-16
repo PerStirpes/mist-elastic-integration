@@ -55,51 +55,54 @@ processors:
 
 
 
-  # Convert timestamp from seconds (with fractional part) to milliseconds (as long)
-#   - script:
-#       tag: convert_timestamp_to_ms
-#       lang: painless
-      # if: ctx.mist?.mx_edge_events?.timestamp != null
-      # source: |
-      #   def ts = ctx.mist.mx_edge_events.timestamp;
-      #   if (ts instanceof String) {
-      #     // Parse string (which may include fractional seconds) to double, then to ms
-      #     try {
-      #       double seconds = Double.parseDouble(ts);
-      #       ctx.mist.mx_edge_events.timestamp = (long) (seconds * 1000);
-      #     } catch (Exception e) {
-      #       // If parse fails, leave timestamp as-is (or it will be removed later if not parseable)
-      #     }
-      #   } else if (ts instanceof Number) {
-      #     // If already a number (seconds), convert to milliseconds
-      #     double seconds = ((Number) ts).doubleValue();
-      #     ctx.mist.mx_edge_events.timestamp = (long) (seconds * 1000);
-      #   }
+  - script:
+      tag: normalize_timestamp_millis
+      lang: painless
+      source: |-
+        def nested = ctx.mist?.mx_edge_events;
+        if (nested != null && nested.timestamp != null) {
+          def raw = nested.timestamp;
 
-  
+          /* ---- Strings ------------------------------------------------- */
+          if (raw instanceof String) {
+            raw = raw.trim();
+            if (raw.contains(".")) {                    // "1746…688.844081"
+              raw = (long)(Double.parseDouble(raw) * 1000L);
+            } else {
+              raw = Long.parseLong(raw);                // "1750701995" etc.
+            }
+          }
 
-  - script:                   # 2) ensure seconds-since-epoch become milliseconds
-      description: "Convert 10-digit seconds to 13-digit millis; keep fractional parts"
-      source: |
-        if (ctx.mist.mx_edge_events.containsKey('timestamp')) {
-          def ts = ctx.mist.mx_edge_events.timestamp;
-          if (ts instanceof String) {          // tolerate quoted numbers
-            ts = Double.parseDouble(ts);
+          /* ---- Numbers ------------------------------------------------- */
+          long ts;
+          if (raw instanceof Float || raw instanceof Double) {  //  float secs
+            ts = (long)(((Number)raw).doubleValue() * 1000L) ;
+          } else {                                              // int secs/ms
+            ts = ((Number)raw).longValue();
+            if (ts < 1000000000000L) {      // still seconds
+              ts = ts * 1000;                   // 64-bit multiplication
+            }
           }
-          if (ts < 1e12) {                     // seconds → millis
-            ts = Math.round(ts * 1000);
-          } else {
-            ts = Math.round(ts);               // already millis; drop fractions
-          }
-          ctx.mist.mx_edge_events.timestamp = ts;
+
+          nested.timestamp_millis = ts;         // always positive & correct
         }
-  # Use the timestamp (epoch ms) to set the @timestamp field for the event
-
-  - date:                     # 3) write @timestamp
-      field: mist.mx_edge_events.timestamp
+        
+  - date:
+      description: "Parse normalized timestamp to @timestamp"
+      field: "mist.mx_edge_events.timestamp_millis"
       target_field: "@timestamp"
-      formats:
-        - UNIX_MS
+      formats: ["UNIX_MS"]
+      output_format: "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+  - remove:
+      ignore_missing: true
+      tag: remove_timestamp_millis
+      field: mist.mx_edge_events.timestamp_millis
+
+  - remove:
+      ignore_missing: true
+      tag: remove_timestamp
+      field: mist.mx_edge_events.timestamp
+      
   # Categorize the event under "network"
   - append:
       tag: set_event_category

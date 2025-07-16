@@ -5,9 +5,6 @@
       type: group
       description: "Mist Edge (mx-edge) event fields."
       fields:
-        - name: org_id
-          type: keyword
-          description: "Organization ID associated with the event."
         - name: site_id
           type: keyword
           description: "Site ID associated with the event."
@@ -23,9 +20,6 @@
         - name: audit_id
           type: keyword
           description: "Audit trail ID for configuration changes (if applicable)."
-        - name: timestamp
-          type: long
-          description: "Event timestamp (epoch milliseconds)."
         - name: type
           type: keyword
           description: "Type of the Mist Edge event (event code/name)."

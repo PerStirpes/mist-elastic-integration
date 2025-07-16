@@ -42,14 +42,6 @@
           type: keyword
         - name: ap_name
           type: keyword
-        # The following fields are related to device or edge events and are not used in client events:
-        # - name: device_name
-        #   type: keyword
-        # - name: ev_type
-        #   type: keyword
         - name: reason
           type: keyword
-        # - name: device_id
-        #   type: keyword
-        # - name: type
-        #   type: keyword
+     

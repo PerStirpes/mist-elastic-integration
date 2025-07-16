@@ -37,6 +37,54 @@ processors:
       ignore_missing: true
       field: "@timestamp"
       target_field: cribl_timestamp
+      
+  - script:
+      tag: normalize_timestamp_millis
+      lang: painless
+      source: |-
+        def nested = ctx.mist?.client_events;
+        if (nested != null && nested.timestamp != null) {
+          def raw = nested.timestamp;
+
+          /* ---- Strings ------------------------------------------------- */
+          if (raw instanceof String) {
+            raw = raw.trim();
+            if (raw.contains(".")) {                    // "1746…688.844081"
+              raw = (long)(Double.parseDouble(raw) * 1000L);
+            } else {
+              raw = Long.parseLong(raw);                // "1750701995" etc.
+            }
+          }
+
+          /* ---- Numbers ------------------------------------------------- */
+          long ts;
+          if (raw instanceof Float || raw instanceof Double) {  //  float secs
+            ts = (long)(((Number)raw).doubleValue() * 1000L) ;
+          } else {                                              // int secs/ms
+            ts = ((Number)raw).longValue();
+            if (ts < 1000000000000L) {      // still seconds
+              ts = ts * 1000;                   // 64-bit multiplication
+            }
+          }
+
+          nested.timestamp_millis = ts;         // always positive & correct
+        }
+        
+  - date:
+      description: "Parse normalized timestamp to @timestamp"
+      field: "mist.client_events.timestamp_millis"
+      target_field: "@timestamp"
+      formats: ["UNIX_MS"]
+      output_format: "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+  - remove:
+      ignore_missing: true
+      tag: remove_timestamp_millis
+      field: mist.client_events.timestamp_millis
+
+  - remove:
+      ignore_missing: true
+      tag: remove_timestamp
+      field: mist.client_events.timestamp
   ##########################
   ## ECS Device Mapping ##
   ##########################
@@ -118,26 +166,16 @@ processors:
       ignore_missing: true
       field: mist.client_events.duration
       target_field: event.duration
-  # - script:
-  #     description: "Default event.dataset from topic"  # (Not used; relevant to removed event types)
-  #     if: ctx.topic != null
-  #     lang: painless
-  #     source: |
-  #       ctx.event.dataset = ctx.topic;
   - script:
       description: "Convert event.duration from seconds to nanoseconds"
       if: ctx.event?.duration != null
       lang: painless
       source: |
-        ctx.event.duration = ctx.event.duration * 1000000000;
+        ctx.event.duration = ctx.event.duration * 1000000000L;
   - rename:
       ignore_missing: true
-      field: mist.client_events.disconnect
+      field: mist.client_events.disconnect_float
       target_field: event.end
-  # - rename:
-  #     ignore_missing: true
-  #     field: mist.client_events.topic
-  #     target_field: event.action  # (Commented out; no longer mapping topic to event.action without mx-edge events)
   - rename:
       ignore_missing: true
       field: mist.client_events.id
@@ -148,7 +186,7 @@ processors:
       target_field: event.sequence
   - rename:
       ignore_missing: true
-      field: mist.client_events.connect
+      field: mist.client_events.connect_float
       target_field: event.start
   - rename:
       ignore_missing: true
@@ -167,22 +205,15 @@ processors:
             ctx.mist.client_events.timestamp instanceof ArrayList) {
           ctx.mist.client_events.timestamp = ctx.mist.client_events.timestamp[0];
         }
-  - date:
-      if: ctx.mist?.client_events?.get("@timestamp") != null
-      tag: date_processor_mist.client_events.@timestamp
-      field: mist.client_events.@timestamp
-      target_field: "@timestamp"
-      formats:
-        - UNIX_MS
   - script:
       description: "Convert event.start/end from epoch seconds to epoch milliseconds"
       lang: painless
       source: |
         if (ctx.event?.start != null) {
-          ctx.event.start = ctx.event.start * 1000;
+          ctx.event.start = ctx.event.start * 1000L;
         }
         if (ctx.event?.end != null) {
-          ctx.event.end = ctx.event.end * 1000;
+          ctx.event.end = ctx.event.end * 1000L;
         }
 
   ##########################
@@ -221,7 +252,8 @@ processors:
       ignore_missing: true
       field: mist.client_events.client_username
       target_field: client.user.name  # (Duplicate mapping; already handled above)
-
+  # (The two convert processors above ensure client_ip fields are properly typed as IP addresses)
+  # client.info contains ip and clinet.join and client.session contain client_ip
   - convert:
       if: ctx.mist?.client_events != null
       tag: client_ip_to_client_ip
@@ -238,16 +270,15 @@ processors:
       type: ip
       ignore_missing: true
       ignore_failure: true
-  # (The two convert processors above ensure client_ip fields are properly typed as IP addresses)
-  # Old approach (replaced by convert above):
-  # - rename:
-  #     ignore_missing: true
-  #     field: mist.client_events.client_ip
-  #     target_field: client.ip
-  # - rename:
-  #     ignore_missing: true
-  #     field: mist.client_events.ip
-  #     target_field: client.ip
+
+  - remove:
+      ignore_missing: true
+      tag: remove_ip
+      field: mist.client_events.ip
+  - remove:
+      ignore_missing: true
+      tag: remove_ip
+      field: mist.client_events.client_ip
 
   - rename:
       ignore_missing: true
