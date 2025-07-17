@@ -371,13 +371,13 @@ processors:
       field: destination.as.organization_name
       target_field: destination.as.organization.name
 
-  # - remove:
-  #     ignore_failure: true
-  #     ignore_missing: true
-  #     if: ctx?.tags == null || !(ctx.tags.contains("preserve_original_event"))
-  #     tag: remove_original_event
-  #     field: event.original
-  # (Above remove_original_event processor kept commented out to preserve event.original if needed)
+  - remove:
+      ignore_failure: true
+      ignore_missing: true
+      if: ctx?.tags == null || !(ctx.tags.contains("preserve_original_event"))
+      tag: remove_original_event
+      field: event.original
+
 
 on_failure:
   - append:
