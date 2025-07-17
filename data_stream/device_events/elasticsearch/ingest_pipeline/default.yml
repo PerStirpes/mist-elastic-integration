@@ -113,7 +113,7 @@ processors:
       ignore_missing: true
   - rename:
       field: mist.device_events.reason          # Reason code or description
-      target_field: mist.device_events.message
+      target_field: message
       ignore_missing: true
   - rename:
       field: mist.device_events.device_type     # "ap", "switch", etc.
@@ -134,7 +134,7 @@ processors:
                                # All these events are from Juniper (Mist)
   - rename:
       field: mist.device_events.text
-      target_field: mist.device_events.message
+      target_field: message
       ignore_missing: true
   - rename:
       field: mist.device_events.type

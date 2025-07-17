@@ -48,7 +48,7 @@ processors:
           }
           ne.timestamp_millis = (long) t;
         }
-        
+       
   - date:
       description: "Parse normalized timestamp to @timestamp"
       field: "mist.audit_events.timestamp_millis"
@@ -64,7 +64,11 @@ processors:
       ignore_missing: true
       tag: remove_timestamp
       field: mist.audit_events.timestamp
-        
+      
+  - rename:
+      field: mist.audit_events.message
+      target_field: message
+      ignore_missing: true         
       
   - convert:
       ignore_failure: true

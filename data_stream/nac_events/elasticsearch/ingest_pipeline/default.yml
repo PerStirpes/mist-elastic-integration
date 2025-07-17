@@ -147,7 +147,7 @@ processors:
       if: "ctx.mist?.nac_events != null"
       tag: map_text_to_event_reason
       field: mist.nac_events.text
-      target_field: mist.nac_events.message
+      target_field: message
       ignore_missing: true
 
   - rename:
