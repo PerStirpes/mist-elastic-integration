@@ -1,4 +1,10 @@
 # newer versions go on top
+- version: 1.0.6
+  changes:
+    - description: change event.orginal to raw.original
+      type: enhancement
+      update: "updated the ingest pipeline to use raw.original instead of event.original to populate the raw.original field when message is not present"
+    
 - version: 1.0.5
   changes:
     - description: splitting the ingest pipeline into multiple pipelines
