@@ -32,10 +32,6 @@ processors:
       target_field: mist.device_events
       if: ctx.event?.original != null && (ctx.event.original.trim().startsWith('{') || ctx.event.original.trim().startsWith('['))
       ignore_failure: true
-  - rename:
-      ignore_missing: true
-      field: "@timestamp"
-      target_field: cribl_timestamp
 
 # Normalize the timestamp field 
 # --- inside your processors list ---
@@ -176,12 +172,13 @@ processors:
       field: event.category
       value: ["network"]
       allow_duplicates: false
-#   - date:
-#       tag: set_event_timestamp
-#       field: mist.device_events.timestamp
-#       target_field: "@timestamp"
-#       if: ctx.mist?.device_events?.timestamp != null
-#       formats: ["UNIX"]
+
+  - remove:
+      ignore_failure: true
+      ignore_missing: true
+      if: ctx?.tags == null || !(ctx.tags.contains("preserve_original_event"))
+      tag: remove_original_event
+      field: event.original
 
 on_failure:
   - append:

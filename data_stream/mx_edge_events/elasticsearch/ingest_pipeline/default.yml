@@ -48,12 +48,6 @@ processors:
       field: mist.mx_edge_events.type
       target_field: event.code
 
-  - rename:
-      ignore_missing: true
-      field: "@timestamp"
-      target_field: cribl_timestamp
-
-
 
   - script:
       tag: normalize_timestamp_millis
@@ -109,6 +103,13 @@ processors:
       field: event.category
       value: [ "network" ]
       allow_duplicates: false
+      
+  - remove:
+      ignore_failure: true
+      ignore_missing: true
+      if: ctx?.tags == null || !(ctx.tags.contains("preserve_original_event"))
+      tag: remove_original_event
+      field: event.original
 
   # Remove null or empty fields from all levels of the document
   - script:

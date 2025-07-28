@@ -89,10 +89,6 @@ processors:
       field: mist.nac_events.username
       target_field: user.name
       ignore_missing: true
-  - rename:
-      ignore_missing: true
-      field: "@timestamp"
-      target_field: cribl_timestamp 
 
   - script:
       tag: normalize_timestamp_millis
@@ -484,6 +480,13 @@ processors:
         - mist.nac_accounting.nas_ip
         - mist.nac_accounting.client_ip
       ignore_missing: true
+ 
+  - remove:
+      ignore_failure: true
+      ignore_missing: true
+      if: ctx?.tags == null || !(ctx.tags.contains("preserve_original_event"))
+      tag: remove_original_event
+      field: event.original
 
 on_failure:
   - append:

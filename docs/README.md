@@ -207,15 +207,15 @@ Please refer to the following [document](https://www.elastic.co/guide/en/ecs/cur
 
 ## Mist Audit Events
 
-| Mist field   | ECS field                                                          | Notes |
-| ------------ | ------------------------------------------------------------------ | ----- |
-| `src_ip`     | `source.ip` (typed)                                                |       |
-| `org_id`     | `organization.id`                                                  |       |
-| `id`         | `event.id`                                                         |       |
-| `admin_name` | `user.full_name`                                                   |       |
-| `user_agent` | `user_agent.original`                                              |       |
-| `@timestamp` | _(left as-is by Cribl)_                                            |       |
-| _Geo IP_     | `source.geo`, `source.as.*`, `destination.geo`, `destination.as.*` |       |
+| Mist field   | ECS field             | Notes |
+| ------------ | --------------------- | ----- |
+| `src_ip`     | `source.ip` (typed)   |       |
+| `org_id`     | `organization.id`     |       |
+| `id`         | `event.id`            |       |
+| `admin_name` | `user.full_name`      |       |
+| `user_agent` | `user_agent.original` |       |
+
+| _Geo IP_ | `source.geo`, `source.as.*`, `destination.geo`, `destination.as.*` | |
 
 ---
 
@@ -326,10 +326,6 @@ Please refer to the following [document](https://www.elastic.co/guide/en/ecs/cur
 
 ## Misc
 
-[ ] drop "agent_id_status": "missing"
-[x] @timestamp is cribl ingested timestap
-
--   change to ingested at cribl
     [x] parse orgininal timestamp
 
 # change timestamp
