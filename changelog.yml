@@ -1,9 +1,9 @@
 # newer versions go on top
 - version: 1.0.6
   changes:
-    - description: change event.orginal to raw.original
+    - description: clean up events
       type: enhancement
-      update: "updated the ingest pipeline to use raw.original instead of event.original to populate the raw.original field when message is not present"
+      update: "clean up event processing"
     
 - version: 1.0.5
   changes:
