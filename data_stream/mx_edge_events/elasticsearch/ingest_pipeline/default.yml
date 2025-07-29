@@ -34,9 +34,6 @@ processors:
       tag: json_parse_event
       field: event.original
       target_field: mist.mx_edge_events
-      ignore_failure: true
-      if: ctx.event?.original != null && 
-          (ctx.event.original.trim().startsWith('{') || ctx.event.original.trim().startsWith('['))
 
   - rename:
       ignore_missing: true
