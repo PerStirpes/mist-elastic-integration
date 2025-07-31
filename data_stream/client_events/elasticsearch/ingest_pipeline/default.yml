@@ -364,6 +364,10 @@ processors:
       tag: rename_destination_as_org
       field: destination.as.organization_name
       target_field: destination.as.organization.name
+  - set:
+      tag: copy_original_message
+      field: raw.original
+      copy_from: event.original
 
   - remove:
       ignore_failure: true

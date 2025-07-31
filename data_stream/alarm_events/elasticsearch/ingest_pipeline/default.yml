@@ -253,6 +253,11 @@ processors:
           return false;
         }
         dropEmptyFields(ctx);
+  - set:
+      tag: copy_original_message
+      field: raw.original
+      copy_from: event.original
+      
   - remove:
       ignore_failure: true
       ignore_missing: true
